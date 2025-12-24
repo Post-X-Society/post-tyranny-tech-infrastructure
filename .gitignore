@@ -1,0 +1,57 @@
+# Secrets - NEVER commit these
+secrets/**/*.yaml
+secrets/**/*.yml
+!secrets/.sops.yaml
+keys/age-key.txt
+*.key
+*.pem
+
+# OpenTofu/Terraform state and variables
+tofu/.terraform/
+tofu/.terraform.lock.hcl
+tofu/terraform.tfstate
+tofu/terraform.tfstate.backup
+tofu/*.tfvars
+!tofu/terraform.tfvars.example
+
+# Ansible
+ansible/*.retry
+ansible/.vault_pass
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+
+# Python (if using scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

@@ -1,0 +1,18 @@
+# Fail2ban configuration
+# Managed by Ansible - do not edit manually
+
+[DEFAULT]
+bantime  = {{ common_fail2ban_bantime }}
+findtime = {{ common_fail2ban_findtime }}
+maxretry = {{ common_fail2ban_maxretry }}
+
+# Email notifications (disabled by default)
+# destemail = root@localhost
+# sendername = Fail2Ban
+# mta = sendmail
+
+[sshd]
+enabled = true
+port    = {{ common_ssh_port }}
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s

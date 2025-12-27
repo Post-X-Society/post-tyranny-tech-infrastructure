@@ -1,0 +1,20 @@
+---
+# Fail2ban configuration for SSH protection
+
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+
+- name: Configure fail2ban defaults
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: '0644'
+  notify: Restart fail2ban
+
+- name: Ensure fail2ban is running and enabled
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes

@@ -1,0 +1,17 @@
+---
+# Handlers for common role
+
+- name: Restart SSH
+  service:
+    name: ssh
+    state: restarted
+
+- name: Restart unattended-upgrades
+  service:
+    name: unattended-upgrades
+    state: restarted
+
+- name: Restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted

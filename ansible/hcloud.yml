@@ -1,0 +1,37 @@
+# Hetzner Cloud Dynamic Inventory Configuration
+# Queries Hetzner Cloud API for server list at runtime
+# Requires: HCLOUD_TOKEN environment variable
+
+plugin: hetzner.hcloud.hcloud
+
+# Optional: Filter by label
+# label_selector: role=app-server
+
+# Group servers by labels
+keyed_groups:
+  # Group by client label
+  - key: labels.client
+    prefix: client
+    separator: _
+
+  # Group by role label
+  - key: labels.role
+    prefix: role
+    separator: _
+
+  # Group by location
+  - key: location
+    prefix: location
+    separator: _
+
+# Compose custom variables
+compose:
+  ansible_host: ipv4_address
+  server_id: id
+  server_type: server_type
+  datacenter: datacenter
+
+# Create groups for all servers
+groups:
+  # All Hetzner Cloud servers
+  hetzner_cloud: True

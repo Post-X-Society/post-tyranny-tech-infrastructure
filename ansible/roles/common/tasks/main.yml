@@ -1,0 +1,30 @@
+---
+# Main tasks for common role - base system setup and hardening
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install common packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+
+- name: Configure SSH hardening
+  include_tasks: ssh.yml
+
+- name: Configure UFW firewall
+  include_tasks: firewall.yml
+
+- name: Configure automatic updates
+  include_tasks: updates.yml
+  when: common_unattended_upgrades
+
+- name: Configure fail2ban
+  include_tasks: fail2ban.yml
+  when: common_fail2ban_enabled

@@ -798,6 +798,47 @@ infrastructure/
 
 ---
 
+## 15. Development Environment and Tooling
+
+### Decision: Isolated Python Environments with pipx
+
+**Choice:** Use `pipx` for installing Python CLI tools (Ansible) in isolated virtual environments.
+
+**Why pipx:**
+- Prevents dependency conflicts between tools
+- Each tool has its own Python environment
+- No interference with system Python packages
+- Easy to upgrade/rollback individual tools
+- Modern best practice for Python CLI tools
+
+**Implementation:**
+```bash
+# Install pipx
+brew install pipx
+pipx ensurepath
+
+# Install Ansible in isolation
+pipx install --include-deps ansible
+
+# Inject additional dependencies as needed
+pipx inject ansible requests python-dateutil
+```
+
+**Benefits:**
+| Aspect | Benefit |
+|--------|---------|
+| Isolation | No conflicts with other Python tools |
+| Reproducibility | Each team member gets same isolated environment |
+| Maintainability | Easy to upgrade Ansible without breaking other tools |
+| Clean system | No pollution of system Python packages |
+
+**Alternatives Considered:**
+- **Homebrew Ansible** - Rejected: Can conflict with system Python, harder to manage dependencies
+- **System pip install** - Rejected: Pollutes global Python environment
+- **Manual venv** - Rejected: More manual work, pipx automates this
+
+---
+
 ## Changelog
 
 | Date | Change | Author |
@@ -807,4 +848,5 @@ infrastructure/
 | 2024-12 | Switched from Terraform to OpenTofu (licensing concerns) | Pieter / Claude |
 | 2024-12 | Switched from HashiCorp Vault to SOPS + Age (simplicity, open source) | Pieter / Claude |
 | 2024-12 | Switched from Keycloak to Zitadel (Swiss company, GDPR jurisdiction) | Pieter / Claude |
+| 2024-12 | Adopted pipx for isolated Python tool environments (Ansible) | Pieter / Claude |
 ```

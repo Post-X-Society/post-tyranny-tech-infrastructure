@@ -1,0 +1,42 @@
+---
+# Default variables for common role
+
+# Timezone
+common_timezone: "Europe/Amsterdam"
+
+# SSH Configuration
+common_ssh_port: 22
+common_ssh_permit_root_login: "prohibit-password"
+common_ssh_password_authentication: "no"
+common_ssh_pubkey_authentication: "yes"
+
+# UFW Firewall
+common_ufw_default_incoming: "deny"
+common_ufw_default_outgoing: "allow"
+common_ufw_allowed_ports:
+  - { port: "22", proto: "tcp", comment: "SSH" }
+  - { port: "80", proto: "tcp", comment: "HTTP" }
+  - { port: "443", proto: "tcp", comment: "HTTPS" }
+
+# Automatic Updates
+common_unattended_upgrades: true
+common_auto_reboot: false  # Manual control over reboots
+
+# Fail2ban
+common_fail2ban_enabled: true
+common_fail2ban_bantime: 3600  # 1 hour
+common_fail2ban_findtime: 600  # 10 minutes
+common_fail2ban_maxretry: 5
+
+# System packages
+common_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - apt-listchanges

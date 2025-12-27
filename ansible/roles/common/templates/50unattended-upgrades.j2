@@ -1,0 +1,28 @@
+// Automatic upgrade configuration
+// Managed by Ansible - do not edit manually
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+// List of packages to not update
+Unattended-Upgrade::Package-Blacklist {
+};
+
+// Automatically reboot if needed
+Unattended-Upgrade::Automatic-Reboot "{{ 'true' if common_auto_reboot else 'false' }}";
+
+// Reboot time if automatic reboot is enabled
+Unattended-Upgrade::Automatic-Reboot-Time "03:00";
+
+// Email notification (disabled by default)
+// Unattended-Upgrade::Mail "root";
+
+// Remove unused dependencies
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Automatically cleanup old kernels
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";

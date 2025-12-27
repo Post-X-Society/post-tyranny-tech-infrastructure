@@ -1,0 +1,26 @@
+# Copy this file to terraform.tfvars and fill in your values
+# terraform.tfvars is gitignored and will not be committed
+
+# Hetzner API Tokens
+hcloud_token     = "YOUR_HETZNER_CLOUD_API_TOKEN"
+hetznerdns_token = "YOUR_HETZNER_DNS_API_TOKEN"  # Can be same as cloud token
+
+# SSH Public Key (paste the contents of ~/.ssh/id_rsa.pub or similar)
+ssh_public_key = "ssh-ed25519 AAAA... user@hostname"
+
+# Base domain (must be registered and added to Hetzner DNS)
+base_domain = "example.com"
+
+# Client configurations
+clients = {
+  # Example client - uncomment and modify when ready to provision
+  # alpha = {
+  #   server_type = "cx22"        # 2 vCPU, 4 GB RAM, 40 GB SSD - €6.25/month
+  #   location    = "fsn1"        # Falkenstein, Germany
+  #   subdomain   = "alpha"       # Will create alpha.example.com
+  #   apps        = ["zitadel", "nextcloud"]
+  # }
+}
+
+# Enable automated snapshots (20% of server cost)
+enable_snapshots = true

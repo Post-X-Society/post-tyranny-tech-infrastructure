@@ -1,0 +1,37 @@
+---
+# Main tasks for traefik role - deploy Traefik reverse proxy
+
+- name: Create Traefik directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/docker/traefik
+    - /opt/docker/traefik/letsencrypt
+
+- name: Deploy Traefik static configuration
+  template:
+    src: traefik.yml.j2
+    dest: /opt/docker/traefik/traefik.yml
+    mode: '0644'
+  notify: Restart Traefik
+
+- name: Deploy Traefik dynamic configuration
+  template:
+    src: dynamic.yml.j2
+    dest: /opt/docker/traefik/dynamic.yml
+    mode: '0644'
+  notify: Restart Traefik
+
+- name: Deploy Traefik docker-compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/docker/traefik/docker-compose.yml
+    mode: '0644'
+  notify: Restart Traefik
+
+- name: Start Traefik via Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/docker/traefik
+    state: present

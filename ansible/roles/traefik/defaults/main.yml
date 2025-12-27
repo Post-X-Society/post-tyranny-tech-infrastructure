@@ -1,0 +1,19 @@
+---
+# Default variables for traefik role
+
+# Traefik version
+traefik_version: "v3.0"
+
+# Let's Encrypt configuration
+traefik_acme_email: "admin@example.com"  # Override this!
+traefik_acme_staging: false  # Set to true for testing
+
+# Dashboard configuration
+traefik_dashboard_enabled: false
+traefik_dashboard_domain: "traefik.example.com"
+
+# Network
+traefik_network: "traefik"
+
+# Docker socket (for auto-discovery)
+traefik_docker_socket: "/var/run/docker.sock"

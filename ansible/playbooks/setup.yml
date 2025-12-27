@@ -1,0 +1,40 @@
+---
+# Initial server setup playbook
+# Provisions base infrastructure: hardening, Docker, Traefik
+
+- name: Setup base infrastructure
+  hosts: all
+  become: yes
+
+  vars:
+    # Override these in group_vars or host_vars
+    traefik_acme_email: "admin@postxsociety.cloud"
+
+  pre_tasks:
+    - name: Wait for system to be ready
+      wait_for_connection:
+        timeout: 300
+
+    - name: Gather facts
+      setup:
+
+  roles:
+    - role: common
+      tags: ['common', 'security']
+
+    - role: docker
+      tags: ['docker']
+
+    - role: traefik
+      tags: ['traefik', 'proxy']
+
+  post_tasks:
+    - name: Display server information
+      debug:
+        msg:
+          - "✅ Server setup complete!"
+          - "Hostname: {{ ansible_hostname }}"
+          - "IP Address: {{ ansible_default_ipv4.address }}"
+          - "SSH hardened, UFW enabled, fail2ban active"
+          - "Docker installed and running"
+          - "Traefik managing SSL certificates automatically"

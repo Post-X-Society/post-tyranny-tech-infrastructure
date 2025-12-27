@@ -1,0 +1,22 @@
+---
+# Default variables for docker role
+
+# Docker version (use 'latest' or pin specific version)
+docker_edition: "ce"
+docker_install_compose: true
+
+# Docker daemon configuration
+docker_daemon_options:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+  storage-driver: "overlay2"
+
+# Docker Compose version
+docker_compose_version: "2.24.0"
+
+# Docker networks to create
+docker_networks:
+  - name: "traefik"
+    driver: "bridge"

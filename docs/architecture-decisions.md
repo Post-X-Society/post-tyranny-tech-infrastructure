@@ -2,9 +2,9 @@
 
 ## Post-X Society Multi-Tenant VPS Platform
 
-**Document Status:** Living document  
-**Created:** December 2024  
-**Last Updated:** December 2024
+**Document Status:** Living document
+**Created:** December 2024
+**Last Updated:** December 2025
 
 ---
 
@@ -848,5 +848,5 @@ pipx inject ansible requests python-dateutil
 | 2024-12 | Switched from Terraform to OpenTofu (licensing concerns) | Pieter / Claude |
 | 2024-12 | Switched from HashiCorp Vault to SOPS + Age (simplicity, open source) | Pieter / Claude |
 | 2024-12 | Switched from Keycloak to Zitadel (Swiss company, GDPR jurisdiction) | Pieter / Claude |
-| 2024-12 | Adopted pipx for isolated Python tool environments (Ansible) | Pieter / Claude |
+| 2025-12 | Adopted pipx for isolated Python tool environments (Ansible) | Pieter / Claude |
 ```

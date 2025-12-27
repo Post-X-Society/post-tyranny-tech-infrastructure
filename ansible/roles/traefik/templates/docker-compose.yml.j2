@@ -1,0 +1,36 @@
+# Traefik Reverse Proxy
+# Managed by Ansible - do not edit manually
+
+services:
+  traefik:
+    image: traefik:{{ traefik_version }}
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"
+      - "443:443"
+{% if traefik_dashboard_enabled %}
+      - "8080:8080"
+{% endif %}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - {{ traefik_docker_socket }}:{{ traefik_docker_socket }}:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - {{ traefik_network }}
+{% if traefik_dashboard_enabled %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`{{ traefik_dashboard_domain }}`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+{% endif %}
+
+networks:
+  {{ traefik_network }}:
+    external: true

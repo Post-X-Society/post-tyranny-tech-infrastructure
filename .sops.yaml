@@ -1,0 +1,7 @@
+# SOPS Configuration
+# Defines encryption keys and rules for secret files
+
+creation_rules:
+  # All files in secrets/ directory
+  - path_regex: secrets/.*\.sops\.yaml$
+    age: age170jqy5pg6z62kevadqyxxekw8ryf3e394zaquw0nhs9ae3v9wd6qq2hxnk

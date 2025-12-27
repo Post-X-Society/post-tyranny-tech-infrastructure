@@ -1,0 +1,6 @@
+# NEVER commit Age private keys
+*.txt
+*.key
+
+# Only allow README
+!README.md

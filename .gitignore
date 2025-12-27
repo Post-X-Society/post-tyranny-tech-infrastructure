@@ -1,6 +1,7 @@
-# Secrets - NEVER commit these
+# Secrets - NEVER commit plaintext, only encrypted .sops.yaml files
 secrets/**/*.yaml
 secrets/**/*.yml
+!secrets/**/*.sops.yaml
 !secrets/.sops.yaml
 keys/age-key.txt
 *.key

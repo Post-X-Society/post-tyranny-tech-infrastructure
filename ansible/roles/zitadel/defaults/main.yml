@@ -1,0 +1,33 @@
+---
+# Zitadel Default Variables
+
+# Zitadel version (pin explicitly)
+zitadel_version: "v2.63.7"
+
+# PostgreSQL version for Zitadel database
+postgres_version: "16-alpine"
+
+# Admin user (password from secrets)
+zitadel_admin_username: "admin"
+
+# Console client ID (Zitadel's built-in admin console)
+zitadel_console_client_id: "251896714278772225@ptt"
+
+# OIDC configuration
+zitadel_oidc_token_lifetime: "12h"
+zitadel_oidc_refresh_lifetime: "720h"
+
+# Resource limits
+zitadel_memory_limit: "512M"
+zitadel_cpu_limit: "1.0"
+
+# Database configuration
+zitadel_db_user: "zitadel"
+zitadel_db_name: "zitadel"
+
+# Network configuration
+zitadel_network: "zitadel-internal"
+zitadel_traefik_network: "traefik"
+
+# Directory for Zitadel configuration
+zitadel_config_dir: "/opt/docker/zitadel"

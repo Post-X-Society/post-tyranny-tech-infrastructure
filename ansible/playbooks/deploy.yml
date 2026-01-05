@@ -1,0 +1,43 @@
+---
+# Deploy applications to client servers
+# This playbook deploys Zitadel, Nextcloud, and other applications
+
+- name: Deploy applications to client servers
+  hosts: all
+  become: yes
+
+  pre_tasks:
+    - name: Gather facts
+      setup:
+
+    - name: Determine client name from hostname
+      set_fact:
+        client_name: "{{ inventory_hostname }}"
+
+    - name: Load client secrets
+      community.sops.load_vars:
+        file: "{{ playbook_dir }}/../../secrets/clients/{{ client_name }}.sops.yaml"
+        name: client_secrets
+        age_key: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
+      no_log: true
+
+    - name: Set Zitadel domain from secrets
+      set_fact:
+        zitadel_domain: "{{ client_secrets.zitadel_domain }}"
+      when: client_secrets.zitadel_domain is defined
+
+  roles:
+    - role: zitadel
+
+  post_tasks:
+    - name: Display deployment summary
+      debug:
+        msg: |
+          Deployment complete for client: {{ client_name }}
+
+          Zitadel: https://{{ zitadel_domain }}
+
+          Next steps:
+          1. Login to Zitadel with the admin credentials
+          2. Change the admin password
+          3. Configure OIDC applications for Nextcloud (when deployed)

@@ -1,44 +1,55 @@
-# DNS Configuration
-# OPTIONAL: Only used if you have a domain registered in Hetzner DNS
-# Comment out this entire file if you don't have a domain yet
+# DNS Configuration for vrije.cloud using hcloud provider
+# The zone already exists in Hetzner Console, so we reference it as a data source
 
-# Uncomment below when you have a domain registered in Hetzner DNS
-/*
-# DNS Zone (must already exist in Hetzner DNS)
-data "hetznerdns_zone" "main" {
+# Reference the existing DNS zone
+data "hcloud_zone" "main" {
   name = var.base_domain
 }
 
-# A Records for client servers
-resource "hetznerdns_record" "client_a" {
+# A Records for client servers (e.g., test.vrije.cloud -> 78.47.191.38)
+resource "hcloud_zone_rrset" "client_a" {
   for_each = var.clients
 
-  zone_id = data.hetznerdns_zone.main.id
-  name    = each.value.subdomain
-  type    = "A"
-  value   = hcloud_server.client[each.key].ipv4_address
-  ttl     = 300
+  zone   = data.hcloud_zone.main.name
+  name   = each.value.subdomain
+  type   = "A"
+  ttl    = 300
+  records = [
+    {
+      value   = hcloud_server.client[each.key].ipv4_address
+      comment = "Client ${each.key} server"
+    }
+  ]
 }
 
-# Wildcard A record for each client (for subdomains like auth.alpha.platform.nl)
-resource "hetznerdns_record" "client_wildcard" {
+# Wildcard A record for each client (e.g., *.test.vrije.cloud for zitadel.test.vrije.cloud)
+resource "hcloud_zone_rrset" "client_wildcard" {
   for_each = var.clients
 
-  zone_id = data.hetznerdns_zone.main.id
-  name    = "*.${each.value.subdomain}"
-  type    = "A"
-  value   = hcloud_server.client[each.key].ipv4_address
-  ttl     = 300
+  zone   = data.hcloud_zone.main.name
+  name   = "*.${each.value.subdomain}"
+  type   = "A"
+  ttl    = 300
+  records = [
+    {
+      value   = hcloud_server.client[each.key].ipv4_address
+      comment = "Wildcard for ${each.key} subdomains (Zitadel, Nextcloud, etc)"
+    }
+  ]
 }
 
-# AAAA Records for IPv6
-resource "hetznerdns_record" "client_aaaa" {
+# AAAA Records for IPv6 (e.g., test.vrije.cloud IPv6)
+resource "hcloud_zone_rrset" "client_aaaa" {
   for_each = var.clients
 
-  zone_id = data.hetznerdns_zone.main.id
-  name    = each.value.subdomain
-  type    = "AAAA"
-  value   = hcloud_server.client[each.key].ipv6_address
-  ttl     = 300
+  zone   = data.hcloud_zone.main.name
+  name   = each.value.subdomain
+  type   = "AAAA"
+  ttl    = 300
+  records = [
+    {
+      value   = hcloud_server.client[each.key].ipv6_address
+      comment = "Client ${each.key} server IPv6"
+    }
+  ]
 }
-*/

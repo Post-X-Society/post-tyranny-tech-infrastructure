@@ -1,0 +1,99 @@
+services:
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:{{ zitadel_version }}
+    container_name: zitadel
+    restart: unless-stopped
+    command: start-from-init --masterkeyFromEnv --tlsMode external
+    environment:
+      # Masterkey for encryption
+      ZITADEL_MASTERKEY: "{{ client_secrets.zitadel_masterkey }}"
+
+      # Database configuration
+      ZITADEL_DATABASE_POSTGRES_HOST: zitadel-db
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: "{{ zitadel_db_name }}"
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: "{{ zitadel_db_user }}"
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: "{{ client_secrets.zitadel_db_password }}"
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: "{{ zitadel_db_user }}"
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: "{{ client_secrets.zitadel_db_password }}"
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+
+      # External domain configuration
+      ZITADEL_EXTERNALSECURE: "true"
+      ZITADEL_EXTERNALDOMAIN: "{{ zitadel_domain }}"
+      ZITADEL_EXTERNALPORT: 443
+
+      # First instance configuration
+      ZITADEL_FIRSTINSTANCE_ORG_NAME: "{{ client_name | title }}"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: "{{ zitadel_admin_username }}"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "{{ client_secrets.zitadel_admin_password }}"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL: "admin@{{ zitadel_domain }}"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED: "true"
+
+    networks:
+      - {{ zitadel_traefik_network }}
+      - {{ zitadel_network }}
+
+    depends_on:
+      zitadel-db:
+        condition: service_healthy
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zitadel.rule=Host(`{{ zitadel_domain }}`)"
+      - "traefik.http.routers.zitadel.tls=true"
+      - "traefik.http.routers.zitadel.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.zitadel.entrypoints=websecure"
+      - "traefik.http.services.zitadel.loadbalancer.server.port=8080"
+      # gRPC support for API
+      - "traefik.http.services.zitadel.loadbalancer.server.scheme=h2c"
+      # Middleware for security headers
+      - "traefik.http.routers.zitadel.middlewares=zitadel-headers"
+      - "traefik.http.middlewares.zitadel-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.zitadel-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.zitadel-headers.headers.stsPreload=true"
+
+    deploy:
+      resources:
+        limits:
+          memory: {{ zitadel_memory_limit }}
+          cpus: "{{ zitadel_cpu_limit }}"
+
+  zitadel-db:
+    image: postgres:{{ postgres_version }}
+    container_name: zitadel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "{{ zitadel_db_user }}"
+      POSTGRES_PASSWORD: "{{ client_secrets.zitadel_db_password }}"
+      POSTGRES_DB: "{{ zitadel_db_name }}"
+
+    volumes:
+      - zitadel-db-data:/var/lib/postgresql/data
+
+    networks:
+      - {{ zitadel_network }}
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ zitadel_db_user }} -d {{ zitadel_db_name }}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+volumes:
+  zitadel-db-data:
+    driver: local
+
+networks:
+  {{ zitadel_traefik_network }}:
+    external: true
+  {{ zitadel_network }}:
+    driver: bridge
+    internal: true

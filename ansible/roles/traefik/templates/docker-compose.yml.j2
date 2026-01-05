@@ -6,6 +6,9 @@ services:
     image: traefik:{{ traefik_version }}
     container_name: traefik
     restart: unless-stopped
+    environment:
+      # Fix Docker API version compatibility - use 1.44 for modern Docker
+      - DOCKER_API_VERSION=1.44
     security_opt:
       - no-new-privileges:true
     ports:

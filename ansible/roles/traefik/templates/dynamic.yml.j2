@@ -2,7 +2,33 @@
 # Managed by Ansible - do not edit manually
 
 http:
+  routers:
+    # Zitadel identity provider
+    zitadel:
+      rule: "Host(`zitadel.test.vrije.cloud`)"
+      service: zitadel
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - zitadel-headers
+
+  services:
+    # Zitadel service
+    zitadel:
+      loadBalancer:
+        servers:
+          - url: "h2c://zitadel:8080"
+
   middlewares:
+    # Zitadel-specific headers
+    zitadel-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
     # Security headers
     security-headers:
       headers:

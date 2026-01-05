@@ -1,0 +1,32 @@
+---
+# Bootstrap tasks for initial Zitadel configuration
+
+- name: Check if bootstrap already completed
+  stat:
+    path: "{{ zitadel_config_dir }}/.bootstrap_complete"
+  register: bootstrap_flag
+
+- name: Bootstrap Zitadel instance
+  when: not bootstrap_flag.stat.exists
+  block:
+    - name: Display admin credentials for first login
+      debug:
+        msg: |
+          Zitadel is now running at https://{{ zitadel_domain }}
+
+          Login with:
+          Username: {{ zitadel_admin_username }}
+          Password: {{ client_secrets.zitadel_admin_password }}
+
+          IMPORTANT: Change this password after first login!
+
+    - name: Mark bootstrap as complete
+      file:
+        path: "{{ zitadel_config_dir }}/.bootstrap_complete"
+        state: touch
+        mode: '0600'
+
+- name: Bootstrap already completed
+  debug:
+    msg: "Zitadel bootstrap already completed, skipping initialization"
+  when: bootstrap_flag.stat.exists

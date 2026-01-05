@@ -1,0 +1,9 @@
+---
+# Handlers for Zitadel role
+
+- name: Restart Zitadel
+  community.docker.docker_compose_v2:
+    project_src: "{{ zitadel_config_dir }}"
+    services:
+      - zitadel
+    state: restarted

@@ -1,8 +1,8 @@
 ---
 # Default variables for traefik role
 
-# Traefik version
-traefik_version: "v3.0"
+# Traefik version (v3.2+ fixes Docker API compatibility)
+traefik_version: "v3.2"
 
 # Let's Encrypt configuration
 traefik_acme_email: "admin@example.com"  # Override this!

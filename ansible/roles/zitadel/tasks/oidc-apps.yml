@@ -1,0 +1,7 @@
+---
+# OIDC Application creation tasks (for Nextcloud and other apps)
+# This will be implemented in a later phase when Nextcloud is deployed
+
+- name: OIDC applications placeholder
+  debug:
+    msg: "OIDC application creation will be implemented when Nextcloud role is ready"

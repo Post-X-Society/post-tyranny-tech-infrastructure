@@ -3,10 +3,7 @@ provider "hcloud" {
   token = var.hcloud_token
 }
 
-# DNS provider - uncomment when using Hetzner DNS
-# provider "hetznerdns" {
-#   apitoken = var.hetznerdns_token
-# }
+# hcloud provider handles both Cloud and DNS resources
 
 # SSH Key Resource
 resource "hcloud_ssh_key" "default" {

@@ -34,3 +34,12 @@ nextcloud_trusted_domains:
 # PHP memory limit
 nextcloud_php_memory_limit: "512M"
 nextcloud_php_upload_limit: "16G"
+
+# Collabora Office configuration
+collabora_enabled: true
+collabora_domain: "office.{{ client_domain }}"
+collabora_admin_user: "admin"
+# Password stored in secrets: collabora_admin_password
+
+# Two-factor authentication
+twofactor_enforced: true

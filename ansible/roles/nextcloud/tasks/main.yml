@@ -19,3 +19,9 @@
   tags:
     - nextcloud
     - oidc
+
+- name: Include apps installation and configuration
+  include_tasks: apps.yml
+  tags:
+    - nextcloud
+    - apps

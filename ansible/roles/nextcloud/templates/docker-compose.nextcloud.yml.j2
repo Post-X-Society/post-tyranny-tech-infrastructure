@@ -26,6 +26,20 @@ services:
     networks:
       - nextcloud-internal
 
+  # Nextcloud cron (separate container for background jobs)
+  nextcloud-cron:
+    image: nextcloud:{{ nextcloud_version }}
+    container_name: nextcloud-cron
+    restart: unless-stopped
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis
+    volumes:
+      - nextcloud-data:/var/www/html
+    entrypoint: /cron.sh
+    networks:
+      - nextcloud-internal
+
   # Nextcloud application
   nextcloud:
     image: nextcloud:{{ nextcloud_version }}
@@ -95,6 +109,42 @@ services:
 
       # Service
       - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+
+  # Collabora Office (online document editing)
+  collabora:
+    image: collabora/code:latest
+    container_name: collabora
+    restart: unless-stopped
+    environment:
+      - domain={{ nextcloud_domain | regex_replace('\.', '\\.') }}
+      - username={{ collabora_admin_user }}
+      - password={{ client_secrets.collabora_admin_password }}
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=true
+      - MEMPROPORTION=60.0
+      - MAX_DOCUMENTS=10
+      - MAX_CONNECTIONS=20
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '2'
+        reservations:
+          memory: 512m
+    networks:
+      - traefik
+      - nextcloud-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+
+      # HTTP Router
+      - "traefik.http.routers.collabora.rule=Host(`{{ collabora_domain }}`)"
+      - "traefik.http.routers.collabora.entrypoints=websecure"
+      - "traefik.http.routers.collabora.tls=true"
+      - "traefik.http.routers.collabora.tls.certresolver=letsencrypt"
+
+      # Service
+      - "traefik.http.services.collabora.loadbalancer.server.port=9980"
 
 networks:
   traefik:

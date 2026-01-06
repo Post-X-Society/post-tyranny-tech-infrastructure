@@ -10,4 +10,4 @@
 
 - name: Include OIDC applications setup
   include_tasks: oidc-apps.yml
-  when: zitadel_create_oidc_apps | default(false)
+  when: zitadel_create_oidc_apps | default(true)

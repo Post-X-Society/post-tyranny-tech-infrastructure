@@ -20,17 +20,33 @@
   shell: docker exec -u www-data nextcloud php occ app:enable user_oidc
   when: not user_oidc_installed
 
-# Note: OIDC provider configuration requires the Zitadel application to be created first
-# This will be configured manually or via Zitadel API in a follow-up task
-- name: Display OIDC configuration instructions
+- name: Check if OIDC provider is already configured
+  shell: docker exec -u www-data nextcloud php occ user_oidc:provider
+  register: oidc_providers
+  changed_when: false
+  failed_when: false
+
+- name: Configure OIDC provider if credentials are available
+  shell: |
+    docker exec -u www-data nextcloud php occ user_oidc:provider:add \
+      --clientid="{{ nextcloud_oidc_client_id }}" \
+      --clientsecret="{{ nextcloud_oidc_client_secret }}" \
+      --discoveryuri="https://{{ zitadel_domain }}/.well-known/openid-configuration" \
+      "Zitadel"
+  when:
+    - nextcloud_oidc_client_id is defined
+    - nextcloud_oidc_client_secret is defined
+    - "'Zitadel' not in oidc_providers.stdout"
+  register: oidc_config
+  changed_when: "'Provider Zitadel has been created' in oidc_config.stdout"
+
+- name: Display OIDC status
   debug:
     msg: |
-      To complete OIDC setup:
-      1. Create an OIDC application in Zitadel console at https://{{ zitadel_domain }}
-      2. Use redirect URI: https://{{ nextcloud_domain }}/apps/user_oidc/code
-      3. Configure the provider in Nextcloud using:
-         docker exec -u www-data nextcloud php occ user_oidc:provider:add \
-           --clientid="<client_id>" \
-           --clientsecret="<client_secret>" \
-           --discoveryuri="https://{{ zitadel_domain }}/.well-known/openid-configuration" \
-           "Zitadel"
+      {% if nextcloud_oidc_client_id is defined %}
+      OIDC SSO fully configured!
+      Users can login with Zitadel credentials at: https://{{ nextcloud_domain }}
+      {% else %}
+      OIDC app installed but not yet configured.
+      OIDC credentials will be configured automatically by Zitadel role.
+      {% endif %}

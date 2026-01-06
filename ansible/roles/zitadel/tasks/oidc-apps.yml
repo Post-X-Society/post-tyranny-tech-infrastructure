@@ -1,7 +1,82 @@
 ---
-# OIDC Application creation tasks (for Nextcloud and other apps)
-# This will be implemented in a later phase when Nextcloud is deployed
+# OIDC Application creation tasks via Zitadel API
+# Fully automated OIDC app provisioning for Nextcloud and other services
 
-- name: OIDC applications placeholder
+- name: Copy OIDC automation scripts to server
+  copy:
+    src: "{{ item }}"
+    dest: "/opt/zitadel/{{ item }}"
+    mode: '0755'
+  loop:
+    - create_oidc_app.py
+    - get_admin_token.sh
+
+- name: Install Python requests library for OIDC automation
+  package:
+    name: python3-requests
+    state: present
+  become: yes
+
+- name: Get admin access token for API calls
+  shell: |
+    /opt/zitadel/get_admin_token.sh \
+      "{{ zitadel_domain }}" \
+      "admin@{{ client_name }}.{{ zitadel_domain }}" \
+      "{{ client_secrets.zitadel_admin_password }}"
+  register: admin_token_result
+  changed_when: false
+  no_log: true
+
+- name: Set admin token fact
+  set_fact:
+    zitadel_admin_token: "{{ admin_token_result.stdout }}"
+  no_log: true
+
+- name: Create OIDC application for Nextcloud
+  shell: |
+    python3 /opt/zitadel/create_oidc_app.py \
+      "{{ zitadel_domain }}" \
+      "{{ zitadel_admin_token }}" \
+      "Nextcloud" \
+      "https://nextcloud.{{ client_domain }}/apps/user_oidc/code"
+  register: oidc_app_result
+  changed_when: "'created' in oidc_app_result.stdout"
+  failed_when: oidc_app_result.rc != 0
+
+- name: Parse OIDC app creation result
+  set_fact:
+    oidc_app_data: "{{ oidc_app_result.stdout | from_json }}"
+
+- name: Display OIDC app status
   debug:
-    msg: "OIDC application creation will be implemented when Nextcloud role is ready"
+    msg: |
+      Nextcloud OIDC Application: {{ oidc_app_data.status }}
+      Client ID: {{ oidc_app_data.client_id | default('N/A') }}
+      Redirect URI: {{ oidc_app_data.redirect_uri | default('N/A') }}
+
+- name: Save OIDC credentials for Nextcloud configuration
+  set_fact:
+    nextcloud_oidc_client_id: "{{ oidc_app_data.client_id }}"
+    nextcloud_oidc_client_secret: "{{ oidc_app_data.client_secret }}"
+  when: oidc_app_data.status == 'created'
+  no_log: true
+
+- name: Configure OIDC provider in Nextcloud
+  shell: |
+    docker exec -u www-data nextcloud php occ user_oidc:provider:add \
+      --clientid="{{ nextcloud_oidc_client_id }}" \
+      --clientsecret="{{ nextcloud_oidc_client_secret }}" \
+      --discoveryuri="https://{{ zitadel_domain }}/.well-known/openid-configuration" \
+      "Zitadel" || true
+  when: nextcloud_oidc_client_id is defined and nextcloud_oidc_client_secret is defined
+  register: oidc_config_result
+  changed_when: "'Provider Zitadel has been created' in oidc_config_result.stdout"
+
+- name: Display OIDC configuration result
+  debug:
+    msg: |
+      Nextcloud OIDC Provider Configuration: {{ 'Success' if oidc_config_result.changed else 'Already configured' }}
+
+      Users can now login to Nextcloud using Zitadel SSO!
+      Visit: https://nextcloud.{{ client_domain }}
+  when: oidc_config_result is defined

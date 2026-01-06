@@ -13,7 +13,12 @@ sops secrets/clients/test.sops.yaml
 Then add this line:
 
 ```yaml
-collabora_admin_password: 7ju5h70L47xJMCoADgKiZIhSak4cwq0B
+collabora_admin_password: <generate-strong-password-here>
+```
+
+Replace `<generate-strong-password-here>` with a strong password generated using:
+```bash
+openssl rand -base64 32 | tr -d "=+/" | cut -c1-32
 ```
 
 Save and exit. SOPS will automatically re-encrypt the file.

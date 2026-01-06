@@ -9,16 +9,39 @@
 - name: Bootstrap Zitadel instance
   when: not bootstrap_flag.stat.exists
   block:
-    - name: Display admin credentials for first login
+    - name: Wait for Zitadel to be fully ready
+      uri:
+        url: "https://{{ zitadel_domain }}/debug/ready"
+        validate_certs: yes
+        status_code: 200
+      register: zitadel_ready
+      until: zitadel_ready.status == 200
+      retries: 30
+      delay: 10
+
+    - name: Display bootstrap instructions
       debug:
         msg: |
-          Zitadel is now running at https://{{ zitadel_domain }}
+          ========================================
+          Zitadel is running!
+          ========================================
 
-          Login with:
-          Username: {{ zitadel_admin_username }}
-          Password: {{ client_secrets.zitadel_admin_password }}
+          URL: https://{{ zitadel_domain }}
 
-          IMPORTANT: Change this password after first login!
+          ⚠️  FIRST-TIME SETUP REQUIRED
+
+          Due to migration bugs in Zitadel v2.63.7, FirstInstance environment
+          variables cannot be used. You must complete initial setup via web UI.
+
+          Visit: https://{{ zitadel_domain }}
+
+          Next steps:
+          1. Complete web UI setup wizard (create admin account)
+          2. Create a service user for API automation
+          3. Generate JWT key for the service user
+          4. Store JWT key for automated OIDC app provisioning
+
+          See: https://github.com/zitadel/zitadel/issues/8791
 
     - name: Mark bootstrap as complete
       file:

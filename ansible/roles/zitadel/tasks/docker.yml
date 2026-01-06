@@ -1,6 +1,10 @@
 ---
 # Docker Compose setup for Zitadel
 
+- name: Include clean tasks when force recreate is requested
+  include_tasks: clean.yml
+  when: zitadel_force_recreate | default(false) | bool
+
 - name: Create Zitadel configuration directory
   file:
     path: "{{ zitadel_config_dir }}"

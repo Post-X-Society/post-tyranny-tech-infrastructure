@@ -24,12 +24,12 @@ services:
       ZITADEL_EXTERNALDOMAIN: "{{ zitadel_domain }}"
       ZITADEL_EXTERNALPORT: 443
 
-      # First instance configuration
-      ZITADEL_FIRSTINSTANCE_ORG_NAME: "{{ client_name | title }}"
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: "{{ zitadel_admin_username }}"
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: "{{ client_secrets.zitadel_admin_password }}"
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL: "admin@{{ zitadel_domain }}"
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED: "true"
+      # FirstInstance variables removed due to migration bugs in v2.63.7
+      # See: https://github.com/zitadel/zitadel/issues/8791
+      # Initial setup will be done via web UI on first access
+
+    volumes:
+      - zitadel-machinekey:/machinekey
 
     networks:
       - {{ zitadel_traefik_network }}
@@ -89,6 +89,8 @@ services:
 
 volumes:
   zitadel-db-data:
+    driver: local
+  zitadel-machinekey:
     driver: local
 
 networks:

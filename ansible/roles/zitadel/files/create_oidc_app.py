@@ -9,7 +9,6 @@ It uses Zitadel's REST API with service account authentication.
 import json
 import sys
 import requests
-import time
 from typing import Dict, Optional
 
 
@@ -17,12 +16,7 @@ class ZitadelOIDCManager:
     """Manage OIDC applications in Zitadel."""
 
     def __init__(self, domain: str, pat_token: str):
-        """Initialize the OIDC manager.
-
-        Args:
-            domain: Zitadel domain (e.g., zitadel.example.com)
-            pat_token: Personal Access Token for authentication
-        """
+        """Initialize the OIDC manager."""
         self.domain = domain
         self.base_url = f"https://{domain}"
         self.headers = {
@@ -30,27 +24,39 @@ class ZitadelOIDCManager:
             "Content-Type": "application/json",
         }
 
-    def get_default_project(self) -> Optional[str]:
-        """Get the default project ID."""
+    def create_project(self, project_name: str) -> Optional[str]:
+        """Create a project."""
+        url = f"{self.base_url}/management/v1/projects"
+        payload = {
+            "name": project_name
+        }
+        response = requests.post(url, headers=self.headers, json=payload)
+        
+        if response.status_code in [200, 201]:
+            return response.json().get("id")
+        return None
+
+    def get_or_create_project(self, project_name: str = "SSO Applications") -> Optional[str]:
+        """Get existing project or create new one."""
+        # Try to list projects
         url = f"{self.base_url}/management/v1/projects/_search"
         response = requests.post(url, headers=self.headers, json={})
 
         if response.status_code == 200:
             projects = response.json().get("result", [])
+            for project in projects:
+                if project.get("name") == project_name:
+                    return project["id"]
+            # If no matching project, use first one if exists
             if projects:
                 return projects[0]["id"]
-        return None
+        
+        # No project found, try to create one
+        project_id = self.create_project(project_name)
+        return project_id
 
     def check_app_exists(self, project_id: str, app_name: str) -> Optional[Dict]:
-        """Check if an OIDC app already exists.
-
-        Args:
-            project_id: Project ID
-            app_name: Application name
-
-        Returns:
-            App data if exists, None otherwise
-        """
+        """Check if an OIDC app already exists."""
         url = f"{self.base_url}/management/v1/projects/{project_id}/apps/_search"
         response = requests.post(url, headers=self.headers, json={})
 
@@ -68,17 +74,7 @@ class ZitadelOIDCManager:
         redirect_uris: list,
         post_logout_redirect_uris: list = None,
     ) -> Dict:
-        """Create an OIDC application.
-
-        Args:
-            project_id: Project ID
-            app_name: Application name
-            redirect_uris: List of redirect URIs
-            post_logout_redirect_uris: List of post-logout redirect URIs
-
-        Returns:
-            Created app data including client ID and secret
-        """
+        """Create an OIDC application."""
         url = f"{self.base_url}/management/v1/projects/{project_id}/apps/oidc"
 
         payload = {
@@ -91,19 +87,18 @@ class ZitadelOIDCManager:
             ],
             "appType": "OIDC_APP_TYPE_WEB",
             "authMethodType": "OIDC_AUTH_METHOD_TYPE_BASIC",
-            "postLogoutRedirectUris": post_logout_redirect_uris or redirect_uris,
+            "postLogoutRedirectUris": post_logout_redirect_uris or [],
             "version": "OIDC_VERSION_1_0",
             "devMode": False,
-            "accessTokenType": "OIDC_TOKEN_TYPE_JWT",
+            "accessTokenType": "OIDC_TOKEN_TYPE_BEARER",
             "accessTokenRoleAssertion": True,
             "idTokenRoleAssertion": True,
             "idTokenUserinfoAssertion": True,
             "clockSkew": "0s",
-            "skipNativeAppSuccessPage": False,
         }
 
         response = requests.post(url, headers=self.headers, json=payload)
-
+        
         if response.status_code in [200, 201]:
             return response.json()
         else:
@@ -126,10 +121,10 @@ def main():
     try:
         manager = ZitadelOIDCManager(domain, pat_token)
 
-        # Get default project
-        project_id = manager.get_default_project()
+        # Get or create project
+        project_id = manager.get_or_create_project("SSO Applications")
         if not project_id:
-            print("Error: No project found", file=sys.stderr)
+            print("Error: Failed to get or create project", file=sys.stderr)
             sys.exit(1)
 
         # Check if app already exists
@@ -166,7 +161,7 @@ def main():
         print(json.dumps(output))
 
     except Exception as e:
-        print(json.dumps({"status": "error", "message": str(e)}), file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

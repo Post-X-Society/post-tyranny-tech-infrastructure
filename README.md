@@ -77,8 +77,8 @@ infrastructure/
 
 ## 📖 Documentation
 
+- **[PROJECT_REFERENCE.md](PROJECT_REFERENCE.md)** - Essential information and common operations
 - [Architecture Decision Record](docs/architecture-decisions.md) - Complete design rationale
-- [Runbook](docs/runbook.md) - Operational procedures (coming soon)
 - [Agent Definitions](.claude/agents/) - Specialized AI agent instructions
 
 ## 🤝 Contributing

@@ -1,0 +1,17 @@
+---
+# Clean Zitadel database and volumes
+
+- name: Stop Zitadel containers with volumes
+  shell: |
+    cd {{ zitadel_config_dir }} && docker compose down -v
+  ignore_errors: yes
+  changed_when: false
+
+- name: Remove bootstrap marker
+  file:
+    path: "{{ zitadel_config_dir }}/.bootstrap_complete"
+    state: absent
+
+- name: Wait for cleanup
+  pause:
+    seconds: 5

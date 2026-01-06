@@ -1,0 +1,29 @@
+---
+# Docker deployment tasks for Nextcloud
+
+- name: Create Nextcloud directory
+  file:
+    path: /opt/nextcloud
+    state: directory
+    mode: '0755'
+
+- name: Deploy Nextcloud Docker Compose file
+  template:
+    src: docker-compose.nextcloud.yml.j2
+    dest: /opt/nextcloud/docker-compose.yml
+    mode: '0600'
+  notify: Restart Nextcloud
+
+- name: Start Nextcloud services
+  community.docker.docker_compose_v2:
+    project_src: /opt/nextcloud
+    state: present
+  register: nextcloud_deploy
+
+- name: Wait for Nextcloud to be ready
+  wait_for:
+    host: localhost
+    port: 80
+    delay: 10
+    timeout: 120
+  when: nextcloud_deploy.changed

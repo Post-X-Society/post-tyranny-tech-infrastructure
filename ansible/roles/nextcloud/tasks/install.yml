@@ -1,0 +1,43 @@
+---
+# Automated Nextcloud installation tasks using occ commands
+
+- name: Wait for Nextcloud container to be healthy
+  shell: docker exec -u www-data nextcloud php -v
+  register: nextcloud_health
+  retries: 30
+  delay: 10
+  until: nextcloud_health.rc == 0
+  changed_when: false
+
+- name: Wait for Nextcloud auto-installation to complete
+  shell: "docker exec -u www-data nextcloud php occ status 2>&1 | grep -q 'installed: true'"
+  register: nextcloud_status
+  retries: 60
+  delay: 5
+  until: nextcloud_status.rc == 0
+  changed_when: false
+
+- name: Configure trusted domains
+  shell: |
+    docker exec -u www-data nextcloud php occ config:system:set trusted_domains 0 --value="{{ nextcloud_domain }}"
+
+- name: Configure overwrite settings for reverse proxy
+  shell: |
+    docker exec -u www-data nextcloud php occ config:system:set overwriteprotocol --value="https"
+    docker exec -u www-data nextcloud php occ config:system:set overwritehost --value="{{ nextcloud_domain }}"
+    docker exec -u www-data nextcloud php occ config:system:set overwrite.cli.url --value="https://{{ nextcloud_domain }}"
+
+- name: Configure Redis for caching
+  shell: |
+    docker exec -u www-data nextcloud php occ config:system:set redis host --value="{{ nextcloud_redis_host }}"
+    docker exec -u www-data nextcloud php occ config:system:set redis port --value="{{ nextcloud_redis_port }}"
+    docker exec -u www-data nextcloud php occ config:system:set memcache.local --value="\OC\Memcache\Redis"
+    docker exec -u www-data nextcloud php occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
+
+- name: Set default phone region
+  shell: |
+    docker exec -u www-data nextcloud php occ config:system:set default_phone_region --value="NL"
+
+- name: Run background jobs via cron
+  shell: |
+    docker exec -u www-data nextcloud php occ background:cron

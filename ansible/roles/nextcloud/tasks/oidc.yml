@@ -1,0 +1,36 @@
+---
+# OIDC/SSO integration tasks for Nextcloud with Zitadel
+
+- name: Check if user_oidc app is installed
+  shell: docker exec -u www-data nextcloud php occ app:list --output=json
+  register: nextcloud_apps
+  changed_when: false
+
+- name: Parse installed apps
+  set_fact:
+    user_oidc_installed: "{{ 'user_oidc' in (nextcloud_apps.stdout | from_json).enabled }}"
+
+- name: Install user_oidc app
+  shell: docker exec -u www-data nextcloud php occ app:install user_oidc
+  when: not user_oidc_installed
+  register: oidc_install
+  changed_when: "'installed' in oidc_install.stdout"
+
+- name: Enable user_oidc app
+  shell: docker exec -u www-data nextcloud php occ app:enable user_oidc
+  when: not user_oidc_installed
+
+# Note: OIDC provider configuration requires the Zitadel application to be created first
+# This will be configured manually or via Zitadel API in a follow-up task
+- name: Display OIDC configuration instructions
+  debug:
+    msg: |
+      To complete OIDC setup:
+      1. Create an OIDC application in Zitadel console at https://{{ zitadel_domain }}
+      2. Use redirect URI: https://{{ nextcloud_domain }}/apps/user_oidc/code
+      3. Configure the provider in Nextcloud using:
+         docker exec -u www-data nextcloud php occ user_oidc:provider:add \
+           --clientid="<client_id>" \
+           --clientsecret="<client_secret>" \
+           --discoveryuri="https://{{ zitadel_domain }}/.well-known/openid-configuration" \
+           "Zitadel"

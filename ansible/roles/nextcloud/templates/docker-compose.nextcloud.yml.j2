@@ -1,0 +1,112 @@
+services:
+  # PostgreSQL Database for Nextcloud
+  nextcloud-db:
+    image: postgres:16-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    volumes:
+      - nextcloud-db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: {{ nextcloud_db_name }}
+      POSTGRES_USER: {{ nextcloud_db_user }}
+      POSTGRES_PASSWORD: {{ client_secrets.nextcloud_db_password }}
+      # Grant full privileges to the user
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    networks:
+      - nextcloud-internal
+
+  # Redis for caching and file locking
+  nextcloud-redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - nextcloud-redis-data:/data
+    networks:
+      - nextcloud-internal
+
+  # Nextcloud application
+  nextcloud:
+    image: nextcloud:{{ nextcloud_version }}
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      # Database configuration
+      POSTGRES_HOST: {{ nextcloud_db_host }}
+      POSTGRES_DB: {{ nextcloud_db_name }}
+      POSTGRES_USER: {{ nextcloud_db_user }}
+      POSTGRES_PASSWORD: {{ client_secrets.nextcloud_db_password }}
+
+      # Redis configuration
+      REDIS_HOST: {{ nextcloud_redis_host }}
+      REDIS_HOST_PORT: {{ nextcloud_redis_port }}
+
+      # Nextcloud configuration
+      NEXTCLOUD_ADMIN_USER: {{ nextcloud_admin_user }}
+      NEXTCLOUD_ADMIN_PASSWORD: {{ client_secrets.nextcloud_admin_password }}
+      NEXTCLOUD_TRUSTED_DOMAINS: {{ nextcloud_domain }}
+      OVERWRITEPROTOCOL: https
+      OVERWRITEHOST: {{ nextcloud_domain }}
+      OVERWRITECLIURL: https://{{ nextcloud_domain }}
+
+      # PHP configuration
+      PHP_MEMORY_LIMIT: {{ nextcloud_php_memory_limit }}
+      PHP_UPLOAD_LIMIT: {{ nextcloud_php_upload_limit }}
+
+      # SMTP configuration (optional, can be configured via OIDC later)
+      # SMTP_HOST:
+      # SMTP_SECURE:
+      # SMTP_PORT:
+      # SMTP_NAME:
+      # SMTP_PASSWORD:
+      # MAIL_FROM_ADDRESS:
+      # MAIL_DOMAIN:
+    networks:
+      - traefik
+      - nextcloud-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+
+      # HTTP Router
+      - "traefik.http.routers.nextcloud.rule=Host(`{{ nextcloud_domain }}`)"
+      - "traefik.http.routers.nextcloud.entrypoints=websecure"
+      - "traefik.http.routers.nextcloud.tls=true"
+      - "traefik.http.routers.nextcloud.tls.certresolver=letsencrypt"
+
+      # Middleware for Nextcloud
+      - "traefik.http.routers.nextcloud.middlewares=nextcloud-headers,nextcloud-redirectregex"
+
+      # Security headers
+      - "traefik.http.middlewares.nextcloud-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.nextcloud-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.nextcloud-headers.headers.stsPreload=true"
+
+      # CalDAV/CardDAV redirect
+      - "traefik.http.middlewares.nextcloud-redirectregex.redirectregex.permanent=true"
+      - "traefik.http.middlewares.nextcloud-redirectregex.redirectregex.regex=https://(.*)/.well-known/(card|cal)dav"
+      - "traefik.http.middlewares.nextcloud-redirectregex.redirectregex.replacement=https://$$1/remote.php/dav/"
+
+      # Service
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+
+networks:
+  traefik:
+    external: true
+  nextcloud-internal:
+    name: nextcloud-internal
+    driver: bridge
+
+volumes:
+  nextcloud-db-data:
+    name: nextcloud-db-data
+  nextcloud-redis-data:
+    name: nextcloud-redis-data
+  nextcloud-data:
+    name: nextcloud-data

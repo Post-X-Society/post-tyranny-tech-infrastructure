@@ -14,12 +14,30 @@ http:
       middlewares:
         - zitadel-headers
 
+    # Nextcloud file sync/share
+    nextcloud:
+      rule: "Host(`nextcloud.test.vrije.cloud`)"
+      service: nextcloud
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - nextcloud-headers
+        - nextcloud-redirectregex
+
   services:
     # Zitadel service
     zitadel:
       loadBalancer:
         servers:
           - url: "h2c://zitadel:8080"
+
+    # Nextcloud service
+    nextcloud:
+      loadBalancer:
+        servers:
+          - url: "http://nextcloud:80"
 
   middlewares:
     # Zitadel-specific headers
@@ -28,6 +46,20 @@ http:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         stsPreload: true
+
+    # Nextcloud-specific headers
+    nextcloud-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+    # CalDAV/CardDAV redirect for Nextcloud
+    nextcloud-redirectregex:
+      redirectRegex:
+        permanent: true
+        regex: "https://(.*)/.well-known/(card|cal)dav"
+        replacement: "https://$1/remote.php/dav/"
 
     # Security headers
     security-headers:

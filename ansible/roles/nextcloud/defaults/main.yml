@@ -1,0 +1,36 @@
+---
+# Default variables for nextcloud role
+
+# Nextcloud version
+nextcloud_version: "30"  # Latest stable version (uses major version tag)
+
+# Database configuration
+nextcloud_db_type: "pgsql"
+nextcloud_db_host: "nextcloud-db"
+nextcloud_db_port: "5432"
+nextcloud_db_name: "nextcloud"
+nextcloud_db_user: "nextcloud"
+
+# Admin user configuration
+nextcloud_admin_user: "admin"
+
+# Nextcloud domain (will be set from client_domain variable)
+nextcloud_domain: "nextcloud.{{ client_domain }}"
+
+# Redis configuration for caching and file locking
+nextcloud_redis_host: "nextcloud-redis"
+nextcloud_redis_port: "6379"
+
+# OIDC configuration
+nextcloud_oidc_enabled: true
+nextcloud_oidc_provider_url: "https://{{ zitadel_domain }}"
+nextcloud_oidc_client_id: ""  # Will be set after creating app in Zitadel
+nextcloud_oidc_client_secret: ""  # Will be set after creating app in Zitadel
+
+# Trusted domains (for Nextcloud config)
+nextcloud_trusted_domains:
+  - "{{ nextcloud_domain }}"
+
+# PHP memory limit
+nextcloud_php_memory_limit: "512M"
+nextcloud_php_upload_limit: "16G"

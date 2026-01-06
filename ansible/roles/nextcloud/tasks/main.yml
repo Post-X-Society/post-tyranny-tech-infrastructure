@@ -1,0 +1,21 @@
+---
+# Main tasks for Nextcloud deployment
+
+- name: Include Docker deployment tasks
+  include_tasks: docker.yml
+  tags:
+    - nextcloud
+    - docker
+
+- name: Include installation tasks
+  include_tasks: install.yml
+  tags:
+    - nextcloud
+    - install
+
+- name: Include OIDC configuration tasks
+  include_tasks: oidc.yml
+  when: nextcloud_oidc_enabled | default(true)
+  tags:
+    - nextcloud
+    - oidc

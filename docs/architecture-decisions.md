@@ -149,19 +149,57 @@ resource "hetznerdns_record" "client_a" {
 
 ## 4. Identity Provider
 
-### Decision: Removed (previously Zitadel)
+### Decision: Authentik (replacing Zitadel)
 
-**Status:** Identity provider removed from architecture.
+**Choice:** Authentik as the identity provider for SSO across all client installations.
 
-**Reason for Removal:**
-- Zitadel v2.63.7 has critical bugs with FirstInstance initialization
-- ALL `ZITADEL_FIRSTINSTANCE_*` environment variables cause database migration errors
-- Requires manual web UI setup for each instance (not scalable for multi-tenant deployment)
+**Why Authentik:**
+
+| Factor | Authentik | Zitadel | Keycloak |
+|--------|-----------|---------|----------|
+| License | MIT (permissive) | AGPL 3.0 | Apache 2.0 |
+| Setup Complexity | Simple Docker Compose | Complex FirstInstance bugs | Heavy Java setup |
+| Database | PostgreSQL only | PostgreSQL only | Multiple options |
+| Language | Python | Go | Java |
+| Resource Usage | Lightweight | Lightweight | Heavy |
+| Maturity | v2025.10 (stable) | v2.x (buggy) | Very mature |
+| Architecture | Modern, API-first | Event-sourced | Traditional |
+
+**Key Advantages:**
+- **Truly open source**: MIT license (most permissive OSI license)
+- **Simple deployment**: Works out-of-box with Docker Compose, no manual wizard steps
+- **Modern architecture**: Python-based, lightweight, API-first design
+- **Comprehensive protocols**: SAML, OAuth2/OIDC, LDAP, RADIUS, SCIM
+- **No Redis required** (as of 2025.10): All caching moved to PostgreSQL
+- **Built-in workflows**: Customizable authentication flows and policies
+- **Active development**: Regular releases, strong community
+
+**Deployment:**
+```yaml
+services:
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2025.10.3
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+    depends_on:
+      - postgresql
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2025.10.3
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+    depends_on:
+      - postgresql
+```
+
+**Previous Choice (Zitadel):**
+- Removed due to FirstInstance initialization bugs in v2.63.7
+- Required manual web UI setup (not scalable for multi-tenant)
 - See: https://github.com/zitadel/zitadel/issues/8791
-
-**Future Consideration:**
-- May revisit with Authentik or other identity providers when needed
-- Currently focusing on Nextcloud as standalone solution
 
 ---
 

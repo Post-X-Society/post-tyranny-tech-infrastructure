@@ -1,0 +1,48 @@
+---
+# Bootstrap tasks for initial Authentik configuration
+
+- name: Check if bootstrap already completed
+  stat:
+    path: "{{ authentik_config_dir }}/.bootstrap_complete"
+  register: bootstrap_flag
+
+- name: Bootstrap Authentik instance
+  when: not bootstrap_flag.stat.exists
+  block:
+    - name: Wait for Authentik to be fully ready
+      uri:
+        url: "https://{{ authentik_domain }}/"
+        validate_certs: yes
+        status_code: [200, 302]
+      register: authentik_ready
+      until: authentik_ready.status in [200, 302]
+      retries: 30
+      delay: 10
+
+    - name: Display bootstrap instructions
+      debug:
+        msg: |
+          ========================================
+          Authentik is running!
+          ========================================
+
+          URL: https://{{ authentik_domain }}
+
+          Initial Setup:
+          1. Visit: https://{{ authentik_domain }}/if/flow/initial-setup/
+          2. Create admin account (username: akadmin recommended)
+          3. Configure email settings in Admin UI
+          4. Create OAuth2/OIDC provider for Nextcloud integration
+
+          Documentation: https://docs.goauthentik.io
+
+    - name: Mark bootstrap as complete
+      file:
+        path: "{{ authentik_config_dir }}/.bootstrap_complete"
+        state: touch
+        mode: '0600'
+
+- name: Bootstrap already completed
+  debug:
+    msg: "Authentik bootstrap already completed, skipping initialization"
+  when: bootstrap_flag.stat.exists

@@ -1,0 +1,138 @@
+services:
+  authentik-db:
+    image: postgres:16-alpine
+    container_name: authentik-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "{{ authentik_db_name }}"
+      POSTGRES_USER: "{{ authentik_db_user }}"
+      POSTGRES_PASSWORD: "{{ client_secrets.authentik_db_password }}"
+
+    volumes:
+      - authentik-db-data:/var/lib/postgresql/data
+
+    networks:
+      - {{ authentik_network }}
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d {{ authentik_db_name }} -U {{ authentik_db_user }}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  authentik-server:
+    image: {{ authentik_image }}:{{ authentik_version }}
+    container_name: authentik-server
+    restart: unless-stopped
+    command: server
+    environment:
+      # PostgreSQL connection
+      AUTHENTIK_POSTGRESQL__HOST: authentik-db
+      AUTHENTIK_POSTGRESQL__NAME: "{{ authentik_db_name }}"
+      AUTHENTIK_POSTGRESQL__USER: "{{ authentik_db_user }}"
+      AUTHENTIK_POSTGRESQL__PASSWORD: "{{ client_secrets.authentik_db_password }}"
+
+      # Secret key for encryption
+      AUTHENTIK_SECRET_KEY: "{{ client_secrets.authentik_secret_key }}"
+
+      # Error reporting (optional)
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+
+      # Branding
+      AUTHENTIK_BRANDING__TITLE: "{{ client_name | title }} SSO"
+
+      # Email configuration (optional, configure later)
+      # AUTHENTIK_EMAIL__HOST: "smtp.example.com"
+      # AUTHENTIK_EMAIL__PORT: "587"
+      # AUTHENTIK_EMAIL__USERNAME: "user@example.com"
+      # AUTHENTIK_EMAIL__PASSWORD: "password"
+      # AUTHENTIK_EMAIL__USE_TLS: "true"
+      # AUTHENTIK_EMAIL__FROM: "authentik@example.com"
+
+    volumes:
+      - authentik-media:/media
+      - authentik-templates:/templates
+
+    networks:
+      - {{ authentik_traefik_network }}
+      - {{ authentik_network }}
+
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.rule=Host(`{{ authentik_domain }}`)"
+      - "traefik.http.routers.authentik.tls=true"
+      - "traefik.http.routers.authentik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik.entrypoints=websecure"
+      - "traefik.http.services.authentik.loadbalancer.server.port={{ authentik_http_port }}"
+      # Security headers
+      - "traefik.http.routers.authentik.middlewares=authentik-headers"
+      - "traefik.http.middlewares.authentik-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.authentik-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.authentik-headers.headers.stsPreload=true"
+
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+
+  authentik-worker:
+    image: {{ authentik_image }}:{{ authentik_version }}
+    container_name: authentik-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      # PostgreSQL connection
+      AUTHENTIK_POSTGRESQL__HOST: authentik-db
+      AUTHENTIK_POSTGRESQL__NAME: "{{ authentik_db_name }}"
+      AUTHENTIK_POSTGRESQL__USER: "{{ authentik_db_user }}"
+      AUTHENTIK_POSTGRESQL__PASSWORD: "{{ client_secrets.authentik_db_password }}"
+
+      # Secret key for encryption (must match server)
+      AUTHENTIK_SECRET_KEY: "{{ client_secrets.authentik_secret_key }}"
+
+      # Error reporting (optional)
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+
+    volumes:
+      - authentik-media:/media
+      - authentik-templates:/templates
+
+    networks:
+      - {{ authentik_network }}
+
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+volumes:
+  authentik-db-data:
+    driver: local
+  authentik-media:
+    driver: local
+  authentik-templates:
+    driver: local
+
+networks:
+  {{ authentik_traefik_network }}:
+    external: true
+  {{ authentik_network }}:
+    driver: bridge
+    internal: true

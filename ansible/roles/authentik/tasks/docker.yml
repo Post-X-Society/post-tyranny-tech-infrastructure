@@ -1,0 +1,46 @@
+---
+# Docker Compose setup for Authentik
+
+- name: Create Authentik configuration directory
+  file:
+    path: "{{ authentik_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Authentik internal network
+  community.docker.docker_network:
+    name: "{{ authentik_network }}"
+    driver: bridge
+    internal: yes
+
+- name: Deploy Authentik Docker Compose configuration
+  template:
+    src: docker-compose.authentik.yml.j2
+    dest: "{{ authentik_config_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart Authentik
+
+- name: Start Authentik services
+  community.docker.docker_compose_v2:
+    project_src: "{{ authentik_config_dir }}"
+    state: present
+
+- name: Wait for Authentik database to be ready
+  community.docker.docker_container_info:
+    name: authentik-db
+  register: db_container
+  until: db_container.container.State.Health.Status == "healthy"
+  retries: 30
+  delay: 5
+  changed_when: false
+
+- name: Wait for Authentik server to be healthy
+  uri:
+    url: "https://{{ authentik_domain }}/"
+    validate_certs: yes
+    status_code: [200, 302]
+  register: authentik_health
+  until: authentik_health.status in [200, 302]
+  retries: 30
+  delay: 10
+  changed_when: false

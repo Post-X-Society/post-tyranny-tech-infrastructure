@@ -1,6 +1,6 @@
 # Post-X Society Multi-Tenant Infrastructure
 
-Infrastructure as Code for a scalable multi-tenant VPS platform running Zitadel (identity provider) and Nextcloud (file sync/share) on Hetzner Cloud.
+Infrastructure as Code for a scalable multi-tenant VPS platform running Nextcloud (file sync/share) on Hetzner Cloud.
 
 ## 🏗️ Architecture
 
@@ -8,7 +8,6 @@ Infrastructure as Code for a scalable multi-tenant VPS platform running Zitadel 
 - **Configuration**: Ansible with dynamic inventory
 - **Secrets**: SOPS + Age encryption
 - **Hosting**: Hetzner Cloud (EU-based, GDPR-compliant)
-- **Identity**: Zitadel (Swiss company, AGPL 3.0)
 - **Storage**: Nextcloud (German company, AGPL 3.0)
 
 ## 📁 Repository Structure
@@ -87,7 +86,6 @@ This project uses specialized AI agents for development:
 
 - **Architect**: High-level design decisions
 - **Infrastructure**: OpenTofu + Ansible implementation
-- **Zitadel**: Identity provider configuration
 - **Nextcloud**: File sync/share configuration
 
 See individual agent files in `.claude/agents/` for responsibilities.
@@ -107,5 +105,4 @@ TBD
 For issues or questions, please create a GitHub issue with the appropriate label:
 - `agent:architect` - Architecture/design questions
 - `agent:infrastructure` - IaC implementation
-- `agent:zitadel` - Identity provider
 - `agent:nextcloud` - File sync/share

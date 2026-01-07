@@ -80,10 +80,9 @@ ansible/
 ├── roles/
 │   ├── common/          # Base setup, hardening, Docker
 │   ├── traefik/         # Reverse proxy, SSL
-│   ├── zitadel/         # Identity provider (Swiss, AGPL 3.0)
-│   ├── nextcloud/
-│   ├── pretix/          # Future
-│   ├── listmonk/        # Future
+│   ├── nextcloud/       # File sync and collaboration
+│   ├── pretix/          # Future: Event ticketing
+│   ├── listmonk/        # Future: Newsletter/mailing
 │   ├── backup/          # Restic configuration
 │   └── monitoring/      # Node exporter, promtail
 ```
@@ -98,13 +97,11 @@ all:
           client_name: alpha
           domain: alpha.platform.nl
           apps:
-            - zitadel
             - nextcloud
         client-beta:
           client_name: beta
           domain: beta.platform.nl
           apps:
-            - zitadel
             - nextcloud
             - pretix
 ```
@@ -152,51 +149,19 @@ resource "hetznerdns_record" "client_a" {
 
 ## 4. Identity Provider
 
-### Decision: Zitadel (replacing Keycloak)
+### Decision: Removed (previously Zitadel)
 
-**Choice:** Zitadel as the identity provider for all client installations.
+**Status:** Identity provider removed from architecture.
 
-**Why Zitadel over Keycloak:**
+**Reason for Removal:**
+- Zitadel v2.63.7 has critical bugs with FirstInstance initialization
+- ALL `ZITADEL_FIRSTINSTANCE_*` environment variables cause database migration errors
+- Requires manual web UI setup for each instance (not scalable for multi-tenant deployment)
+- See: https://github.com/zitadel/zitadel/issues/8791
 
-| Factor | Zitadel | Keycloak |
-|--------|---------|----------|
-| Company HQ | 🇨🇭 Switzerland | 🇺🇸 USA (IBM/Red Hat) |
-| GDPR Jurisdiction | EU-adequate | US jurisdiction |
-| License | AGPL 3.0 | Apache 2.0 |
-| Multi-tenancy | Native design | Added later (2024) |
-| Language | Go (lightweight) | Java (resource-heavy) |
-| Architecture | Event-sourced, API-first | Traditional |
-
-**Licensing Notes:**
-- Zitadel v3 (March 2025) changed from Apache 2.0 to AGPL 3.0
-- For our use case (running Zitadel as IdP), this has zero impact
-- AGPL only requires source disclosure if you modify Zitadel AND provide it as a service
-- SDKs and APIs remain Apache 2.0
-
-**Company Background:**
-- CAOS Ltd., headquartered in St. Gallen, Switzerland
-- Founded 2019, $15.5M funding (Series A)
-- Switzerland has EU data protection adequacy status
-- Public product roadmap, transparent development
-
-**Deployment:**
-```yaml
-# docker-compose.yml snippet
-services:
-  zitadel:
-    image: ghcr.io/zitadel/zitadel:v3.x.x  # Pin version
-    command: start-from-init
-    environment:
-      ZITADEL_DATABASE_POSTGRES_HOST: postgres
-      ZITADEL_EXTERNALDOMAIN: ${CLIENT_DOMAIN}
-    depends_on:
-      - postgres
-```
-
-**Multi-tenancy Approach:**
-- Each client gets isolated Zitadel organization
-- Single Zitadel instance can manage multiple organizations
-- Or: fully isolated Zitadel per client (current choice for maximum isolation)
+**Future Consideration:**
+- May revisit with Authentik or other identity providers when needed
+- Currently focusing on Nextcloud as standalone solution
 
 ---
 
@@ -266,8 +231,6 @@ Storage Box (BX10 or larger)
 /opt/docker/
 ├── nextcloud/
 │   └── data/              # ✓ User files
-├── zitadel/
-│   └── db-dumps/          # ✓ PostgreSQL dumps (not live DB)
 ├── pretix/
 │   └── data/              # ✓ When applicable
 └── configs/               # ✓ docker-compose files, env
@@ -414,7 +377,6 @@ SOPS_AGE_KEY_FILE=keys/age-key.txt sops --decrypt secrets/clients/alpha.sops.yam
 
 **Monitors per Client:**
 - HTTPS endpoint (Nextcloud)
-- HTTPS endpoint (Zitadel)
 - TCP port checks (database, if exposed)
 - Docker container health (via API or agent)
 
@@ -628,7 +590,6 @@ Unattended-Upgrade::Automatic-Reboot "false";  # Manual reboot control
 
 ### Verification
 - [ ] HTTPS accessible
-- [ ] Zitadel admin login works
 - [ ] Nextcloud admin login works
 - [ ] Backup job runs successfully
 - [ ] Monitoring checks green
@@ -658,8 +619,6 @@ Unattended-Upgrade::Automatic-Reboot "false";  # Manual reboot control
 
 ### Data Export (if requested)
 - [ ] Export Nextcloud data
-- [ ] Export Zitadel organization/users
-- [ ] Provide secure download link
 - [ ] Confirm receipt
 
 ### Infrastructure Removal
@@ -732,7 +691,6 @@ infrastructure/
 │   │   ├── common/
 │   │   ├── docker/
 │   │   ├── traefik/
-│   │   ├── zitadel/
 │   │   ├── nextcloud/
 │   │   ├── backup/
 │   │   └── monitoring-agent/
@@ -763,8 +721,7 @@ infrastructure/
 ## 13. Open Decisions / Future Considerations
 
 ### To Decide Later
-- [ ] Shared Zitadel instance vs isolated instances per client
-- [ ] Central logging (Loki) - when/if needed
+- [ ] Identity provider (Authentik or other) - if SSO needed
 - [ ] Prometheus metrics - when/if needed
 - [ ] Custom domain SSL workflow
 - [ ] Client self-service portal
@@ -785,8 +742,7 @@ infrastructure/
 |------|--------|---------|--------|
 | IaC | OpenTofu | Terraform | BSL license concerns, HashiCorp trust issues |
 | Secrets | SOPS + Age | HashiCorp Vault | Simplicity, no US vendor dependency, truly open source |
-| Identity | Zitadel | Keycloak | Swiss company, GDPR-adequate jurisdiction, native multi-tenancy |
-| DNS | Hetzner DNS | Cloudflare | EU-based, GDPR-native, single provider |
+| Identity | (Removed) | Keycloak/Zitadel | Removed due to complexity; may add Authentik in future |
 | Hosting | Hetzner | AWS/GCP/Azure | EU-based, cost-effective, GDPR-compliant |
 | Backup | Restic + Hetzner Storage Box | Cloud backup services | Open source, EU data residency |
 
@@ -848,5 +804,5 @@ pipx inject ansible requests python-dateutil
 | 2024-12 | Switched from Terraform to OpenTofu (licensing concerns) | Pieter / Claude |
 | 2024-12 | Switched from HashiCorp Vault to SOPS + Age (simplicity, open source) | Pieter / Claude |
 | 2024-12 | Switched from Keycloak to Zitadel (Swiss company, GDPR jurisdiction) | Pieter / Claude |
-| 2025-12 | Adopted pipx for isolated Python tool environments (Ansible) | Pieter / Claude |
+| 2026-01 | Removed Zitadel due to FirstInstance bugs; may add Authentik in future | Pieter / Claude |
 ```

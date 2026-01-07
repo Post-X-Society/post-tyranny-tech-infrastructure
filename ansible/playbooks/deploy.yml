@@ -1,6 +1,6 @@
 ---
 # Deploy applications to client servers
-# This playbook deploys Zitadel, Nextcloud, and other applications
+# This playbook deploys Nextcloud and other applications
 
 - name: Deploy applications to client servers
   hosts: all
@@ -21,18 +21,12 @@
         age_key: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
       no_log: true
 
-    - name: Set Zitadel domain from secrets
-      set_fact:
-        zitadel_domain: "{{ client_secrets.zitadel_domain }}"
-      when: client_secrets.zitadel_domain is defined
-
     - name: Set client domain from secrets
       set_fact:
         client_domain: "{{ client_secrets.client_domain }}"
       when: client_secrets.client_domain is defined
 
   roles:
-    - role: zitadel
     - role: nextcloud
 
   post_tasks:
@@ -41,12 +35,4 @@
         msg: |
           Deployment complete for client: {{ client_name }}
 
-          Zitadel: https://{{ zitadel_domain }}
           Nextcloud: https://nextcloud.{{ client_domain }}
-
-          Next steps:
-          1. Login to Zitadel with the admin credentials
-          2. Create OIDC application in Zitadel for Nextcloud
-             - Client name: Nextcloud
-             - Redirect URI: https://nextcloud.{{ client_domain }}/apps/user_oidc/code
-          3. Configure OIDC in Nextcloud using the client ID and secret from Zitadel

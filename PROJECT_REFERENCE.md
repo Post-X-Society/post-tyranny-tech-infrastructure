@@ -11,7 +11,7 @@ infrastructure/
 │   ├── playbooks/       # Main playbooks
 │   │   ├── deploy.yml   # Deploy applications to clients
 │   │   └── setup.yml    # Setup base server infrastructure
-│   └── roles/           # Ansible roles (traefik, nextcloud, etc.)
+│   └── roles/           # Ansible roles (traefik, authentik, nextcloud, etc.)
 ├── keys/
 │   └── age-key.txt      # SOPS encryption key (gitignored)
 ├── secrets/
@@ -45,6 +45,7 @@ export HCLOUD_TOKEN="MlURmliUzLcGyzCWXWWsZt3DeWxKcQH9ZMGiaaNrFM3VcgnASlEWKhhxLHd
 
 ### Client: test
 - **Hostname**: test (from Hetzner Cloud)
+- **Authentik SSO**: https://auth.test.vrije.cloud
 - **Nextcloud**: https://nextcloud.test.vrije.cloud
 - **Secrets**: `secrets/clients/test.sops.yaml`
 
@@ -87,20 +88,32 @@ sops --decrypt secrets/clients/test.sops.yaml
 
 ### Service Stack
 - **Traefik**: Reverse proxy with automatic Let's Encrypt certificates
+- **Authentik 2025.10.3**: Identity provider (OAuth2/OIDC, SAML, LDAP)
+- **PostgreSQL 16**: Database for Authentik
 - **Nextcloud 30.0.17**: File sync and collaboration
 - **Redis**: Caching for Nextcloud
 - **MariaDB**: Database for Nextcloud
 
 ### Docker Networks
 - `traefik`: External network for all web-accessible services
+- `authentik-internal`: Internal network for Authentik ↔ PostgreSQL
 - `nextcloud-internal`: Internal network for Nextcloud ↔ Redis/DB
 
 ### Volumes
+- `authentik_authentik-db-data`: Authentik PostgreSQL data
+- `authentik_authentik-media`: Authentik uploaded media
+- `authentik_authentik-templates`: Custom Authentik templates
 - `nextcloud_nextcloud-data`: Nextcloud files and database
 
 ## Service Credentials
+
+### Authentik Admin
+- **URL**: https://auth.test.vrije.cloud
+- **Setup**: Complete initial setup at `/if/flow/initial-setup/`
+- **Username**: akadmin (recommended)
 
 ### Nextcloud Admin
 - **URL**: https://nextcloud.test.vrije.cloud
 - **Username**: admin
 - **Password**: In `secrets/clients/test.sops.yaml` → `nextcloud_admin_password`
+- **SSO**: Login with Authentik button (auto-configured)

@@ -1,5 +1,5 @@
 ---
-# OIDC/SSO integration tasks for Nextcloud with Zitadel
+# OIDC/SSO integration tasks for Nextcloud with Authentik
 
 - name: Check if user_oidc app is installed
   shell: docker exec -u www-data nextcloud php occ app:list --output=json
@@ -20,33 +20,60 @@
   shell: docker exec -u www-data nextcloud php occ app:enable user_oidc
   when: not user_oidc_installed
 
+- name: Check if Authentik OIDC credentials are available
+  stat:
+    path: /tmp/authentik_oidc_credentials.json
+  register: oidc_creds_file
+
+- name: Load OIDC credentials from Authentik
+  slurp:
+    path: /tmp/authentik_oidc_credentials.json
+  register: oidc_creds_content
+  when: oidc_creds_file.stat.exists
+
+- name: Parse OIDC credentials
+  set_fact:
+    authentik_oidc: "{{ oidc_creds_content.content | b64decode | from_json }}"
+  when: oidc_creds_file.stat.exists
+
 - name: Check if OIDC provider is already configured
   shell: docker exec -u www-data nextcloud php occ user_oidc:provider
   register: oidc_providers
   changed_when: false
   failed_when: false
 
-- name: Configure OIDC provider if credentials are available
+- name: Configure Authentik OIDC provider
   shell: |
-    docker exec -u www-data nextcloud php occ user_oidc:provider:add \
-      --clientid="{{ nextcloud_oidc_client_id }}" \
-      --clientsecret="{{ nextcloud_oidc_client_secret }}" \
-      --discoveryuri="https://{{ zitadel_domain }}/.well-known/openid-configuration" \
-      "Zitadel"
+    docker exec -u www-data nextcloud php occ user_oidc:provider \
+      --clientid="{{ authentik_oidc.client_id }}" \
+      --clientsecret="{{ authentik_oidc.client_secret }}" \
+      --discoveryuri="{{ authentik_oidc.discovery_uri }}" \
+      "Authentik"
   when:
-    - nextcloud_oidc_client_id is defined
-    - nextcloud_oidc_client_secret is defined
-    - "'Zitadel' not in oidc_providers.stdout"
+    - authentik_oidc is defined
+    - authentik_oidc.success | default(false)
+    - "'Authentik' not in oidc_providers.stdout"
   register: oidc_config
-  changed_when: "'Provider Zitadel has been created' in oidc_config.stdout"
+  changed_when: oidc_config.rc == 0
+
+- name: Cleanup OIDC credentials file
+  file:
+    path: /tmp/authentik_oidc_credentials.json
+    state: absent
+  when: oidc_creds_file.stat.exists
 
 - name: Display OIDC status
   debug:
     msg: |
-      {% if nextcloud_oidc_client_id is defined %}
-      OIDC SSO fully configured!
-      Users can login with Zitadel credentials at: https://{{ nextcloud_domain }}
+      {% if authentik_oidc is defined and authentik_oidc.success | default(false) %}
+      ✓ OIDC SSO fully configured!
+      Users can login with Authentik credentials at: https://{{ nextcloud_domain }}
+
+      "Login with Authentik" button should be visible on the login page.
       {% else %}
-      OIDC app installed but not yet configured.
-      OIDC credentials will be configured automatically by Zitadel role.
+      ⚠ OIDC app installed but not yet configured.
+
+      To complete setup:
+      1. Ensure Authentik API token is in secrets (authentik_api_token)
+      2. Re-run deployment with: --tags authentik,oidc
       {% endif %}

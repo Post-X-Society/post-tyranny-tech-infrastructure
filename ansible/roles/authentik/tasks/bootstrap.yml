@@ -1,0 +1,31 @@
+---
+# Bootstrap tasks for initial Authentik configuration
+
+- name: Wait for Authentik to be fully ready
+  uri:
+    url: "https://{{ authentik_domain }}/"
+    validate_certs: yes
+    status_code: [200, 302]
+  register: authentik_ready
+  until: authentik_ready.status in [200, 302]
+  retries: 30
+  delay: 10
+
+- name: Display bootstrap status
+  debug:
+    msg: |
+      ========================================
+      Authentik is running!
+      ========================================
+
+      URL: https://{{ authentik_domain }}
+
+      Bootstrap Configuration:
+      ✓ Admin user 'akadmin' automatically created
+      ✓ Password: (stored in secrets file)
+      ✓ API token: (stored in secrets file)
+
+      The admin account and API token are automatically configured
+      via AUTHENTIK_BOOTSTRAP_* environment variables.
+
+      Documentation: https://docs.goauthentik.io

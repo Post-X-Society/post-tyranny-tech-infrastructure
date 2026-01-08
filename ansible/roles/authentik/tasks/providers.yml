@@ -1,0 +1,76 @@
+---
+# Create OIDC providers in Authentik for application integration
+
+- name: Use bootstrap token for API access
+  set_fact:
+    authentik_api_token: "{{ client_secrets.authentik_bootstrap_token }}"
+
+- name: Create Python script for OIDC provider setup
+  copy:
+    content: |
+      import sys, json, urllib.request
+      base_url, token = "http://localhost:9000", "{{ authentik_api_token }}"
+      def req(p, m='GET', d=None):
+          r = urllib.request.Request(f"{base_url}{p}", json.dumps(d).encode() if d else None, {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}, method=m)
+          try:
+              with urllib.request.urlopen(r, timeout=30) as resp: return resp.status, json.loads(resp.read())
+          except urllib.error.HTTPError as e: return e.code, json.loads(e.read()) if e.headers.get('Content-Type', '').startswith('application/json') else {'error': e.read().decode()}
+      s, d = req('/api/v3/flows/instances/')
+      auth_flow = next((f['pk'] for f in d.get('results', []) if f.get('slug') == 'default-authorization-flow' or f.get('designation') == 'authorization'), None)
+      inval_flow = next((f['pk'] for f in d.get('results', []) if f.get('slug') == 'default-invalidation-flow' or f.get('designation') == 'invalidation'), None)
+      s, d = req('/api/v3/crypto/certificatekeypairs/')
+      key = d.get('results', [{}])[0].get('pk') if d.get('results') else None
+      if not auth_flow or not key: print(json.dumps({'error': 'Config missing'}), file=sys.stderr); sys.exit(1)
+      s, prov = req('/api/v3/providers/oauth2/', 'POST', {'name': 'Nextcloud', 'authorization_flow': auth_flow, 'invalidation_flow': inval_flow, 'client_type': 'confidential', 'redirect_uris': [{'matching_mode': 'strict', 'url': 'https://{{ nextcloud_domain }}/apps/user_oidc/code'}], 'signing_key': key, 'sub_mode': 'hashed_user_id', 'include_claims_in_id_token': True})
+      if s != 201: print(json.dumps({'error': 'Provider failed', 'details': prov}), file=sys.stderr); sys.exit(1)
+      s, app = req('/api/v3/core/applications/', 'POST', {'name': 'Nextcloud', 'slug': 'nextcloud', 'provider': prov['pk'], 'meta_launch_url': 'https://{{ nextcloud_domain }}'})
+      if s != 201: print(json.dumps({'error': 'App failed', 'details': app}), file=sys.stderr); sys.exit(1)
+      print(json.dumps({'success': True, 'provider_id': prov['pk'], 'application_id': app['pk'], 'client_id': prov['client_id'], 'client_secret': prov['client_secret'], 'discovery_uri': f"https://{{ authentik_domain }}/application/o/nextcloud/.well-known/openid-configuration", 'issuer': f"https://{{ authentik_domain }}/application/o/nextcloud/"}))
+    dest: /tmp/create_oidc.py
+    mode: '0755'
+
+- name: Create Nextcloud OIDC provider in Authentik
+  shell: docker exec -i authentik-server python3 < /tmp/create_oidc.py
+  register: oidc_provider_result
+  failed_when: false
+
+- name: Cleanup OIDC script
+  file:
+    path: /tmp/create_oidc.py
+    state: absent
+
+- name: Parse OIDC provider credentials
+  set_fact:
+    oidc_credentials: "{{ oidc_provider_result.stdout | from_json }}"
+  when: oidc_provider_result.rc == 0
+
+- name: Display OIDC provider creation result
+  debug:
+    msg: |
+      OIDC Provider Created Successfully!
+
+      Client ID: {{ oidc_credentials.client_id }}
+      Discovery URI: {{ oidc_credentials.discovery_uri }}
+
+      These credentials will be automatically configured in Nextcloud.
+  when:
+    - oidc_credentials is defined
+    - oidc_credentials.success | default(false)
+
+- name: Save OIDC credentials to temporary file for Nextcloud configuration
+  copy:
+    content: "{{ oidc_credentials | to_json }}"
+    dest: "/tmp/authentik_oidc_credentials.json"
+    mode: '0600'
+  when:
+    - oidc_credentials is defined
+    - oidc_credentials.success | default(false)
+
+- name: Display error if OIDC provider creation failed
+  debug:
+    msg: |
+      ERROR: Failed to create OIDC provider
+
+      {{ oidc_provider_result.stdout | default('No output') }}
+      {{ oidc_provider_result.stderr | default('') }}
+  when: oidc_provider_result.rc != 0

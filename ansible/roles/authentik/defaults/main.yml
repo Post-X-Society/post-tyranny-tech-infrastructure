@@ -1,0 +1,25 @@
+---
+# Defaults for Authentik role
+
+# Authentik version
+authentik_version: "2025.10.3"
+authentik_image: "ghcr.io/goauthentik/server"
+
+# PostgreSQL configuration
+authentik_db_user: "authentik"
+authentik_db_name: "authentik"
+
+# Ports (internal to Docker network, exposed via Traefik)
+authentik_http_port: 9000
+authentik_https_port: 9443
+
+# Docker configuration
+authentik_config_dir: "/opt/docker/authentik"
+authentik_network: "authentik-internal"
+authentik_traefik_network: "traefik"
+
+# Domain (set per client)
+# authentik_domain: "auth.example.com"
+
+# Bootstrap settings
+authentik_bootstrap: true

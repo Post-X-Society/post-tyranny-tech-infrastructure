@@ -1,6 +1,6 @@
 ---
 # Deploy applications to client servers
-# This playbook deploys Nextcloud and other applications
+# This playbook deploys Authentik, Nextcloud, and other applications
 
 - name: Deploy applications to client servers
   hosts: all
@@ -18,7 +18,7 @@
       community.sops.load_vars:
         file: "{{ playbook_dir }}/../../secrets/clients/{{ client_name }}.sops.yaml"
         name: client_secrets
-        age_key: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
+        age_keyfile: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
       no_log: true
 
     - name: Set client domain from secrets
@@ -26,13 +26,42 @@
         client_domain: "{{ client_secrets.client_domain }}"
       when: client_secrets.client_domain is defined
 
+    - name: Set Authentik domain from secrets
+      set_fact:
+        authentik_domain: "{{ client_secrets.authentik_domain }}"
+      when: client_secrets.authentik_domain is defined
+
   roles:
+    - role: authentik
     - role: nextcloud
 
   post_tasks:
     - name: Display deployment summary
       debug:
         msg: |
-          Deployment complete for client: {{ client_name }}
+          ============================================================
+          🎉 Deployment complete for client: {{ client_name }}
+          ============================================================
 
-          Nextcloud: https://nextcloud.{{ client_domain }}
+          Services deployed and configured:
+          ✓ Authentik SSO: https://{{ authentik_domain }}
+          ✓ Nextcloud: https://nextcloud.{{ client_domain }}
+          ✓ SSO Integration: Fully automated (OAuth2/OIDC)
+
+          Authentik Admin Access:
+          - Username: akadmin
+          - Password: {{ client_secrets.authentik_bootstrap_password }}
+          - API Token: Configured automatically
+
+          Nextcloud Admin Access:
+          - Username: {{ client_secrets.nextcloud_admin_user }}
+          - Password: {{ client_secrets.nextcloud_admin_password }}
+
+          End User Access:
+          1. Create users in Authentik: https://{{ authentik_domain }}
+          2. Users login to Nextcloud via "Login with Authentik" button
+          3. First login creates linked Nextcloud account automatically
+
+          ============================================================
+          Ready to use! No manual configuration required.
+          ============================================================

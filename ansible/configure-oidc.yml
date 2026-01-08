@@ -1,0 +1,66 @@
+---
+- name: Configure OIDC
+  hosts: test
+  gather_facts: no
+  vars:
+    nextcloud_domain: "nextcloud.test.vrije.cloud"
+  tasks:
+    - name: Check if Authentik OIDC credentials are available
+      stat:
+        path: /tmp/authentik_oidc_credentials.json
+      register: oidc_creds_file
+
+    - name: Load OIDC credentials from Authentik
+      slurp:
+        path: /tmp/authentik_oidc_credentials.json
+      register: oidc_creds_content
+      when: oidc_creds_file.stat.exists
+
+    - name: Parse OIDC credentials
+      set_fact:
+        authentik_oidc: "{{ oidc_creds_content.content | b64decode | from_json }}"
+      when: oidc_creds_file.stat.exists
+
+    - name: Check if user_oidc app is installed
+      shell: docker exec -u www-data nextcloud php occ app:list --output=json
+      register: nextcloud_apps
+      changed_when: false
+
+    - name: Parse installed apps
+      set_fact:
+        user_oidc_installed: "{{ 'user_oidc' in (nextcloud_apps.stdout | from_json).enabled }}"
+
+    - name: Enable user_oidc app
+      shell: docker exec -u www-data nextcloud php occ app:enable user_oidc
+      when: not user_oidc_installed
+
+    - name: Check if OIDC provider is already configured
+      shell: docker exec -u www-data nextcloud php occ user_oidc:provider
+      register: oidc_providers
+      changed_when: false
+      failed_when: false
+
+    - name: Configure Authentik OIDC provider
+      shell: |
+        docker exec -u www-data nextcloud php occ user_oidc:provider \
+          --clientid="{{ authentik_oidc.client_id }}" \
+          --clientsecret="{{ authentik_oidc.client_secret }}" \
+          --discoveryuri="{{ authentik_oidc.discovery_uri }}" \
+          "Authentik"
+      when:
+        - authentik_oidc is defined
+        - authentik_oidc.success | default(false)
+        - "'Authentik' not in oidc_providers.stdout"
+      register: oidc_config
+      changed_when: oidc_config.rc == 0
+
+    - name: Display OIDC status
+      debug:
+        msg: |
+          ✓ OIDC SSO fully configured!
+          Users can login with Authentik credentials at: https://{{ nextcloud_domain }}
+
+          "Login with Authentik" button should be visible on the login page.
+      when:
+        - authentik_oidc is defined
+        - authentik_oidc.success | default(false)

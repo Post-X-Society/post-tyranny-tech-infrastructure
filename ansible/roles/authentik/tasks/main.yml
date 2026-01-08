@@ -1,0 +1,13 @@
+---
+# Main tasks file for Authentik role
+
+- name: Include Docker Compose setup
+  include_tasks: docker.yml
+
+- name: Include bootstrap setup
+  include_tasks: bootstrap.yml
+  when: authentik_bootstrap | default(true)
+
+- name: Include OIDC provider configuration
+  include_tasks: providers.yml
+  tags: ['authentik', 'oidc']

@@ -34,13 +34,10 @@
   delay: 5
   changed_when: false
 
-- name: Wait for Authentik server to be healthy
-  uri:
-    url: "https://{{ authentik_domain }}/"
-    validate_certs: yes
-    status_code: [200, 302]
+- name: Wait for Authentik server to be healthy (via docker)
+  shell: "docker exec authentik-server curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/"
   register: authentik_health
-  until: authentik_health.status in [200, 302]
+  until: authentik_health.stdout in ['200', '302']
   retries: 30
   delay: 10
   changed_when: false

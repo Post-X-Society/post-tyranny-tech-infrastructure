@@ -26,6 +26,11 @@
     docker exec -u www-data nextcloud php occ config:system:set overwriteprotocol --value="https"
     docker exec -u www-data nextcloud php occ config:system:set overwritehost --value="{{ nextcloud_domain }}"
     docker exec -u www-data nextcloud php occ config:system:set overwrite.cli.url --value="https://{{ nextcloud_domain }}"
+    docker exec -u www-data nextcloud php occ config:system:set trusted_proxies 0 --value="172.18.0.0/16"
+    docker exec -u www-data nextcloud php occ config:system:set trusted_proxies 1 --value="172.19.0.0/16"
+    docker exec -u www-data nextcloud php occ config:system:set trusted_proxies 2 --value="172.20.0.0/16"
+    docker exec -u www-data nextcloud php occ config:system:set trusted_proxies 3 --value="172.21.0.0/16"
+    docker exec -u www-data nextcloud php occ config:system:set forwarded_for_headers 0 --value="HTTP_X_FORWARDED_FOR"
 
 - name: Configure Redis for caching
   shell: |
@@ -41,3 +46,19 @@
 - name: Run background jobs via cron
   shell: |
     docker exec -u www-data nextcloud php occ background:cron
+
+- name: Add missing database indices
+  shell: |
+    docker exec -u www-data nextcloud php occ db:add-missing-indices
+  register: add_indices
+  changed_when: "'Adding' in add_indices.stdout"
+  failed_when: false
+
+- name: Run expensive maintenance repairs (mimetype migrations)
+  shell: |
+    docker exec -u www-data nextcloud php occ maintenance:repair --include-expensive
+  register: maintenance_repair
+  changed_when: "'mimetype' in maintenance_repair.stdout"
+  failed_when: false
+  async: 600
+  poll: 10

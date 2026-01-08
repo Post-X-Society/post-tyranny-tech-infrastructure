@@ -7,3 +7,7 @@
 - name: Include bootstrap setup
   include_tasks: bootstrap.yml
   when: authentik_bootstrap | default(true)
+
+- name: Include OIDC provider configuration
+  include_tasks: providers.yml
+  tags: ['authentik', 'oidc']

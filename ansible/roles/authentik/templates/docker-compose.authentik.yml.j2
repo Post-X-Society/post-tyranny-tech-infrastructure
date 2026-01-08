@@ -105,6 +105,11 @@ services:
       # Error reporting (optional)
       AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
 
+      # Bootstrap configuration (only used on first startup)
+      AUTHENTIK_BOOTSTRAP_PASSWORD: "{{ client_secrets.authentik_bootstrap_password }}"
+      AUTHENTIK_BOOTSTRAP_TOKEN: "{{ client_secrets.authentik_bootstrap_token }}"
+      AUTHENTIK_BOOTSTRAP_EMAIL: "{{ client_secrets.authentik_bootstrap_email | default('admin@' + client_domain) }}"
+
     volumes:
       - authentik-media:/media
       - authentik-templates:/templates

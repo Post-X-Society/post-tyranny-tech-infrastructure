@@ -8,6 +8,7 @@ Infrastructure as Code for a scalable multi-tenant VPS platform running Nextclou
 - **Configuration**: Ansible with dynamic inventory
 - **Secrets**: SOPS + Age encryption
 - **Hosting**: Hetzner Cloud (EU-based, GDPR-compliant)
+- **Identity**: Authentik (OAuth2/OIDC SSO, MIT license)
 - **Storage**: Nextcloud (German company, AGPL 3.0)
 
 ## 📁 Repository Structure
@@ -32,7 +33,48 @@ infrastructure/
 - [SOPS](https://github.com/getsops/sops) + [Age](https://github.com/FiloSottile/age)
 - [Hetzner Cloud account](https://www.hetzner.com/cloud)
 
-### Initial Setup
+### Automated Deployment (Recommended)
+
+**The fastest way to deploy a client:**
+
+```bash
+# 1. Set environment variables
+export HCLOUD_TOKEN="your-hetzner-api-token"
+export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
+
+# 2. Deploy client (fully automated, ~10-15 minutes)
+./scripts/deploy-client.sh <client_name>
+```
+
+This automatically:
+- ✅ Provisions VPS on Hetzner Cloud
+- ✅ Deploys Authentik (SSO/identity provider)
+- ✅ Deploys Nextcloud (file storage)
+- ✅ Configures OAuth2/OIDC integration
+- ✅ Sets up SSL certificates
+- ✅ Creates admin accounts
+
+**Result**: Fully functional system, ready to use immediately!
+
+### Management Scripts
+
+```bash
+# Deploy a fresh client
+./scripts/deploy-client.sh <client_name>
+
+# Rebuild existing client (destroy + redeploy)
+./scripts/rebuild-client.sh <client_name>
+
+# Destroy client infrastructure
+./scripts/destroy-client.sh <client_name>
+```
+
+See [scripts/README.md](scripts/README.md) for detailed documentation.
+
+### Manual Setup (Advanced)
+
+<details>
+<summary>Click to expand manual setup instructions</summary>
 
 1. **Clone repository**:
    ```bash
@@ -52,19 +94,31 @@ infrastructure/
    # Edit with your Hetzner API token and configuration
    ```
 
-4. **Provision infrastructure**:
+4. **Create client secrets**:
+   ```bash
+   cp secrets/clients/test.sops.yaml secrets/clients/<client>.sops.yaml
+   sops secrets/clients/<client>.sops.yaml
+   # Update client_name, domains, regenerate all passwords
+   ```
+
+5. **Provision infrastructure**:
    ```bash
    cd tofu
    tofu init
-   tofu plan
    tofu apply
    ```
 
-5. **Deploy applications**:
+6. **Deploy applications**:
    ```bash
    cd ../ansible
-   ansible-playbook playbooks/setup.yml
+   export HCLOUD_TOKEN="your-token"
+   export SOPS_AGE_KEY_FILE="../keys/age-key.txt"
+
+   ansible-playbook -i hcloud.yml playbooks/setup.yml --limit <client>
+   ansible-playbook -i hcloud.yml playbooks/deploy.yml --limit <client>
    ```
+
+</details>
 
 ## 🎯 Project Principles
 
@@ -77,7 +131,10 @@ infrastructure/
 ## 📖 Documentation
 
 - **[PROJECT_REFERENCE.md](PROJECT_REFERENCE.md)** - Essential information and common operations
+- **[scripts/README.md](scripts/README.md)** - Management scripts documentation
+- **[AUTOMATION_STATUS.md](docs/AUTOMATION_STATUS.md)** - Full automation details
 - [Architecture Decision Record](docs/architecture-decisions.md) - Complete design rationale
+- [SSO Automation](docs/sso-automation.md) - OAuth2/OIDC integration workflow
 - [Agent Definitions](.claude/agents/) - Specialized AI agent instructions
 
 ## 🤝 Contributing
@@ -86,6 +143,7 @@ This project uses specialized AI agents for development:
 
 - **Architect**: High-level design decisions
 - **Infrastructure**: OpenTofu + Ansible implementation
+- **Authentik**: Identity provider and SSO configuration
 - **Nextcloud**: File sync/share configuration
 
 See individual agent files in `.claude/agents/` for responsibilities.
@@ -105,4 +163,5 @@ TBD
 For issues or questions, please create a GitHub issue with the appropriate label:
 - `agent:architect` - Architecture/design questions
 - `agent:infrastructure` - IaC implementation
+- `agent:authentik` - Identity provider/SSO
 - `agent:nextcloud` - File sync/share

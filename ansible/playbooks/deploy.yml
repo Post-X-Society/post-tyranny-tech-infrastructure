@@ -18,7 +18,7 @@
       community.sops.load_vars:
         file: "{{ playbook_dir }}/../../secrets/clients/{{ client_name }}.sops.yaml"
         name: client_secrets
-        age_key: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
+        age_keyfile: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
       no_log: true
 
     - name: Set client domain from secrets
@@ -39,12 +39,29 @@
     - name: Display deployment summary
       debug:
         msg: |
-          Deployment complete for client: {{ client_name }}
+          ============================================================
+          🎉 Deployment complete for client: {{ client_name }}
+          ============================================================
 
-          Authentik SSO: https://{{ authentik_domain }}
-          Nextcloud: https://nextcloud.{{ client_domain }}
+          Services deployed and configured:
+          ✓ Authentik SSO: https://{{ authentik_domain }}
+          ✓ Nextcloud: https://nextcloud.{{ client_domain }}
+          ✓ SSO Integration: Fully automated (OAuth2/OIDC)
 
-          Next steps:
-          1. Complete Authentik initial setup at: https://{{ authentik_domain }}/if/flow/initial-setup/
-          2. Create OAuth2/OIDC provider for Nextcloud in Authentik
-          3. Configure Nextcloud to use Authentik for SSO
+          Authentik Admin Access:
+          - Username: akadmin
+          - Password: {{ client_secrets.authentik_bootstrap_password }}
+          - API Token: Configured automatically
+
+          Nextcloud Admin Access:
+          - Username: {{ client_secrets.nextcloud_admin_user }}
+          - Password: {{ client_secrets.nextcloud_admin_password }}
+
+          End User Access:
+          1. Create users in Authentik: https://{{ authentik_domain }}
+          2. Users login to Nextcloud via "Login with Authentik" button
+          3. First login creates linked Nextcloud account automatically
+
+          ============================================================
+          Ready to use! No manual configuration required.
+          ============================================================

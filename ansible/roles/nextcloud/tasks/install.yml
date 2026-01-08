@@ -62,3 +62,9 @@
   failed_when: false
   async: 600
   poll: 10
+
+- name: Clear any initial background job errors from log
+  shell: |
+    docker exec nextcloud truncate -s 0 /var/www/html/data/nextcloud.log
+  when: maintenance_repair.changed
+  changed_when: false

@@ -56,3 +56,8 @@ venv/
 tmp/
 temp/
 *.tmp
+
+# Test/debug scripts with secrets
+scripts/*-test*.py
+scripts/test-*.py
+**/test-oidc-provider.py

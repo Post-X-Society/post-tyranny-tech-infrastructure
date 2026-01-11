@@ -48,13 +48,16 @@ services:
       # Branding
       AUTHENTIK_BRANDING__TITLE: "{{ client_name | title }} SSO"
 
-      # Email configuration (optional, configure later)
-      # AUTHENTIK_EMAIL__HOST: "smtp.example.com"
-      # AUTHENTIK_EMAIL__PORT: "587"
-      # AUTHENTIK_EMAIL__USERNAME: "user@example.com"
-      # AUTHENTIK_EMAIL__PASSWORD: "password"
-      # AUTHENTIK_EMAIL__USE_TLS: "true"
-      # AUTHENTIK_EMAIL__FROM: "authentik@example.com"
+{% if smtp_enabled | default(false) %}
+      # Email configuration for password resets and notifications
+      AUTHENTIK_EMAIL__HOST: "{{ smtp_host }}"
+      AUTHENTIK_EMAIL__PORT: "{{ smtp_port | default('587') }}"
+      AUTHENTIK_EMAIL__USERNAME: "{{ smtp_username }}"
+      AUTHENTIK_EMAIL__PASSWORD: "{{ smtp_password }}"
+      AUTHENTIK_EMAIL__USE_TLS: "{{ smtp_use_tls | default('true') }}"
+      AUTHENTIK_EMAIL__USE_SSL: "{{ smtp_use_ssl | default('false') }}"
+      AUTHENTIK_EMAIL__FROM: "{{ client_email_address | default('noreply@' + client_domain) }}"
+{% endif %}
 
     volumes:
       - authentik-media:/media
@@ -109,6 +112,17 @@ services:
       AUTHENTIK_BOOTSTRAP_PASSWORD: "{{ client_secrets.authentik_bootstrap_password }}"
       AUTHENTIK_BOOTSTRAP_TOKEN: "{{ client_secrets.authentik_bootstrap_token }}"
       AUTHENTIK_BOOTSTRAP_EMAIL: "{{ client_secrets.authentik_bootstrap_email | default('admin@' + client_domain) }}"
+
+{% if smtp_enabled | default(false) %}
+      # Email configuration for password resets and notifications
+      AUTHENTIK_EMAIL__HOST: "{{ smtp_host }}"
+      AUTHENTIK_EMAIL__PORT: "{{ smtp_port | default('587') }}"
+      AUTHENTIK_EMAIL__USERNAME: "{{ smtp_username }}"
+      AUTHENTIK_EMAIL__PASSWORD: "{{ smtp_password }}"
+      AUTHENTIK_EMAIL__USE_TLS: "{{ smtp_use_tls | default('true') }}"
+      AUTHENTIK_EMAIL__USE_SSL: "{{ smtp_use_ssl | default('false') }}"
+      AUTHENTIK_EMAIL__FROM: "{{ client_email_address | default('noreply@' + client_domain) }}"
+{% endif %}
 
     volumes:
       - authentik-media:/media

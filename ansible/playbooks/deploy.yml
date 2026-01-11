@@ -14,6 +14,13 @@
       set_fact:
         client_name: "{{ inventory_hostname }}"
 
+    - name: Load shared secrets (SMTP configuration)
+      community.sops.load_vars:
+        file: "{{ playbook_dir }}/../../secrets/shared.sops.yaml"
+        name: shared_secrets
+        age_keyfile: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
+      no_log: true
+
     - name: Load client secrets
       community.sops.load_vars:
         file: "{{ playbook_dir }}/../../secrets/clients/{{ client_name }}.sops.yaml"
@@ -31,6 +38,25 @@
         authentik_domain: "{{ client_secrets.authentik_domain }}"
       when: client_secrets.authentik_domain is defined
 
+    # SMTP configuration from shared secrets
+    - name: Set SMTP configuration
+      set_fact:
+        smtp_enabled: "{{ shared_secrets.smtp_enabled | default(false) }}"
+        smtp_host: "{{ shared_secrets.smtp_host | default('') }}"
+        smtp_port: "{{ shared_secrets.smtp_port | default('587') }}"
+        smtp_username: "{{ shared_secrets.smtp_username | default('') }}"
+        smtp_password: "{{ shared_secrets.smtp_password | default('') }}"
+        smtp_use_tls: "{{ shared_secrets.smtp_use_tls | default(true) }}"
+        smtp_use_ssl: "{{ shared_secrets.smtp_use_ssl | default(false) }}"
+      when: shared_secrets.smtp_enabled | default(false) | bool
+
+    # Client-specific email address (e.g., client@vrije.cloud)
+    - name: Set client email address
+      set_fact:
+        client_email_address: "{{ client_secrets.client_email_address | default(client_name + '@vrije.cloud') }}"
+        nextcloud_admin_email: "{{ client_secrets.authentik_bootstrap_email | default('admin@' + client_secrets.client_domain) }}"
+        nextcloud_mail_from: "{{ client_secrets.nextcloud_mail_from | default('nextcloud') }}"
+
   roles:
     - role: authentik
     - role: nextcloud
@@ -40,22 +66,31 @@
       debug:
         msg: |
           ============================================================
-          🎉 Deployment complete for client: {{ client_name }}
+          Deployment complete for client: {{ client_name }}
           ============================================================
 
           Services deployed and configured:
-          ✓ Authentik SSO: https://{{ authentik_domain }}
-          ✓ Nextcloud: https://nextcloud.{{ client_domain }}
-          ✓ SSO Integration: Fully automated (OAuth2/OIDC)
+          - Authentik SSO: https://{{ authentik_domain }}
+          - Nextcloud: https://nextcloud.{{ client_domain }}
+          - SSO Integration: Fully automated (OAuth2/OIDC)
+          {% if smtp_enabled | default(false) %}
+          - Email (SMTP): Configured and ready
+          {% else %}
+          - Email (SMTP): Not configured (set smtp_enabled in shared.sops.yaml)
+          {% endif %}
 
           Authentik Admin Access:
           - Username: akadmin
           - Password: {{ client_secrets.authentik_bootstrap_password }}
+          - Email: {{ client_secrets.authentik_bootstrap_email | default('admin@' + client_domain) }}
           - API Token: Configured automatically
 
           Nextcloud Admin Access:
           - Username: {{ client_secrets.nextcloud_admin_user }}
           - Password: {{ client_secrets.nextcloud_admin_password }}
+          - Email: {{ nextcloud_admin_email }}
+
+          Client Email Address: {{ client_email_address }}
 
           End User Access:
           1. Create users in Authentik: https://{{ authentik_domain }}

@@ -73,14 +73,17 @@ services:
       PHP_MEMORY_LIMIT: {{ nextcloud_php_memory_limit }}
       PHP_UPLOAD_LIMIT: {{ nextcloud_php_upload_limit }}
 
-      # SMTP configuration (optional, can be configured via OIDC later)
-      # SMTP_HOST:
-      # SMTP_SECURE:
-      # SMTP_PORT:
-      # SMTP_NAME:
-      # SMTP_PASSWORD:
-      # MAIL_FROM_ADDRESS:
-      # MAIL_DOMAIN:
+{% if smtp_enabled | default(false) %}
+      # SMTP configuration for email notifications
+      SMTP_HOST: "{{ smtp_host }}"
+      SMTP_SECURE: "{{ 'ssl' if smtp_use_ssl | default(false) else 'tls' if smtp_use_tls | default(true) else '' }}"
+      SMTP_PORT: "{{ smtp_port | default('587') }}"
+      SMTP_AUTHTYPE: "LOGIN"
+      SMTP_NAME: "{{ smtp_username }}"
+      SMTP_PASSWORD: "{{ smtp_password }}"
+      MAIL_FROM_ADDRESS: "{{ nextcloud_mail_from | default('nextcloud') }}"
+      MAIL_DOMAIN: "{{ client_domain }}"
+{% endif %}
     networks:
       - traefik
       - nextcloud-internal

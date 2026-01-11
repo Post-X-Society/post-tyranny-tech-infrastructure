@@ -232,12 +232,37 @@ Users can:
 - Get automatically provisioned accounts
 - Use the system immediately
 
+## Email Configuration
+
+Email/SMTP is now fully integrated for both Authentik and Nextcloud:
+
+### What Gets Configured
+
+When `smtp_enabled: true` in shared secrets:
+- **Authentik**: Password resets, account notifications
+- **Nextcloud**: File sharing notifications, activity emails, calendar reminders
+- **Admin emails**: Pre-configured for both services
+
+### Client Email Addresses
+
+Each client can have a unique @vrije.cloud email address:
+- Configured in `secrets/clients/<client>.sops.yaml`
+- Used as the "from" address for all notifications
+- Example: `mycompany@vrije.cloud`
+
+### Setup
+
+See [EMAIL_SETUP.md](EMAIL_SETUP.md) for detailed instructions on:
+- Configuring email providers (Mailgun, SendGrid, Postmark)
+- DNS setup (SPF, DKIM, DMARC)
+- Self-hosted email with Mailcow
+
 ## Next Steps
 
 The system is production-ready for automated multi-tenant deployment. Potential enhancements:
 
 1. **Automated user provisioning** - Create default users via Authentik API
-2. **Email configuration** - Add SMTP settings for password resets
+2. ~~**Email configuration** - Add SMTP settings for password resets~~ ✅ **DONE**
 3. **Backup automation** - Automated backups to Hetzner Storage Box
 4. **Monitoring** - Add Prometheus/Grafana for observability
 5. **Additional apps** - OnlyOffice, Collabora, etc.

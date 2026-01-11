@@ -13,6 +13,7 @@ nextcloud_db_user: "nextcloud"
 
 # Admin user configuration
 nextcloud_admin_user: "admin"
+# nextcloud_admin_email: "admin@{{ client_domain }}"  # Set per client
 
 # Nextcloud domain (will be set from client_domain variable)
 nextcloud_domain: "nextcloud.{{ client_domain }}"
@@ -43,3 +44,13 @@ collabora_admin_user: "admin"
 
 # Two-factor authentication
 twofactor_enforced: true
+
+# SMTP configuration (loaded from shared_secrets when enabled)
+# smtp_enabled: false
+# smtp_host: ""
+# smtp_port: "587"
+# smtp_username: ""
+# smtp_password: ""
+# smtp_use_tls: "true"
+# smtp_use_ssl: "false"
+# nextcloud_mail_from: "nextcloud"  # Local part before @domain

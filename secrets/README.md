@@ -137,15 +137,28 @@ Contains secrets shared across all infrastructure:
 - Hetzner Cloud API token
 - Hetzner Storage Box credentials
 - ACME email for SSL certificates
+- **SMTP/Email configuration** (optional):
+  - `smtp_enabled`: true/false
+  - `smtp_host`: SMTP server hostname
+  - `smtp_port`: SMTP port (usually 587)
+  - `smtp_username`: SMTP authentication username
+  - `smtp_password`: SMTP authentication password
+  - `smtp_use_tls`: Use STARTTLS (true/false)
+  - `smtp_use_ssl`: Use implicit SSL (true/false)
+  - `email_provider`: Provider name (mailgun, sendgrid, postmark, mailcow)
 
 ### clients/*.sops.yaml
 
 Per-client secrets:
-- Database passwords (Zitadel, Nextcloud)
+- Database passwords (Authentik, Nextcloud)
 - Admin passwords
-- Zitadel masterkey
-- Restic repository password
-- OIDC credentials (after generation)
+- Authentik secret key and bootstrap credentials
+- Redis password
+- Collabora admin password
+- **Email configuration** (optional):
+  - `client_email_address`: Client-specific sending address (e.g., client@vrije.cloud)
+  - `authentik_bootstrap_email`: Admin user email for Authentik
+  - `nextcloud_mail_from`: Nextcloud mail from prefix (e.g., "nextcloud")
 
 ## 🛠️ Common Tasks
 

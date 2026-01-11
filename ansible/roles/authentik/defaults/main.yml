@@ -23,3 +23,12 @@ authentik_traefik_network: "traefik"
 
 # Bootstrap settings
 authentik_bootstrap: true
+
+# SMTP configuration (loaded from shared_secrets when enabled)
+# smtp_enabled: false
+# smtp_host: ""
+# smtp_port: "587"
+# smtp_username: ""
+# smtp_password: ""
+# smtp_use_tls: "true"
+# smtp_use_ssl: "false"

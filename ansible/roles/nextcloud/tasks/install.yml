@@ -68,3 +68,23 @@
     docker exec nextcloud truncate -s 0 /var/www/html/data/nextcloud.log
   when: maintenance_repair.changed
   changed_when: false
+
+# Configure admin user email address
+- name: Set admin user email address
+  shell: |
+    docker exec -u www-data nextcloud php occ user:setting {{ nextcloud_admin_user }} settings email "{{ nextcloud_admin_email | default('admin@' + client_domain) }}"
+  register: admin_email_result
+  changed_when: "'changed' in admin_email_result.stdout or admin_email_result.rc == 0"
+  failed_when: false
+
+# Configure system email settings for sending mail
+- name: Configure mail sender email address
+  shell: |
+    docker exec -u www-data nextcloud php occ config:system:set mail_from_address --value="{{ nextcloud_mail_from | default('nextcloud') }}"
+    docker exec -u www-data nextcloud php occ config:system:set mail_domain --value="{{ client_domain }}"
+  when: smtp_enabled | default(false)
+
+- name: Configure mail mode for SMTP
+  shell: |
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtpmode --value="smtp"
+  when: smtp_enabled | default(false)

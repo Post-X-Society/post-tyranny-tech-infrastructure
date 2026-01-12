@@ -1,31 +1,6 @@
 ---
 # Bootstrap tasks for initial Authentik configuration
 
-- name: Wait for Authentik to be fully ready
-  uri:
-    url: "https://{{ authentik_domain }}/"
-    validate_certs: yes
-    status_code: [200, 302]
-  register: authentik_ready
-  until: authentik_ready.status in [200, 302]
-  retries: 60
-  delay: 15
-  failed_when: false
-
-- name: Display warning if HTTPS access not yet available
-  debug:
-    msg: |
-      ⚠ WARNING: Authentik not yet accessible via HTTPS
-
-      This is normal during initial deployment when:
-      - DNS records are still propagating
-      - Let's Encrypt certificates are being issued
-      - Traefik is still configuring routes
-
-      Authentik is running internally and will be accessible soon.
-      The deployment will continue with internal checks.
-  when: authentik_ready.status not in [200, 302]
-
 - name: Display bootstrap status
   debug:
     msg: |
@@ -42,5 +17,9 @@
 
       The admin account and API token are automatically configured
       via AUTHENTIK_BOOTSTRAP_* environment variables.
+
+      Note: HTTPS access requires DNS propagation and SSL certificate
+      issuance. This typically takes 1-5 minutes after deployment.
+      Authentik is accessible internally and the deployment will continue.
 
       Documentation: https://docs.goauthentik.io

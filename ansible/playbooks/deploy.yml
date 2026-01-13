@@ -14,6 +14,25 @@
       set_fact:
         client_name: "{{ inventory_hostname }}"
 
+    - name: Check if base infrastructure is installed
+      stat:
+        path: /opt/docker/traefik/docker-compose.yml
+      register: traefik_compose
+
+    - name: Fail if base infrastructure is not installed
+      fail:
+        msg: |
+          ❌ ERROR: Base infrastructure not installed!
+
+          Traefik reverse proxy is required but not found.
+
+          You must run the setup playbook BEFORE deploying applications:
+            ansible-playbook -i hcloud.yml playbooks/setup.yml --limit {{ client_name }}
+
+          Or use the rebuild script which handles the correct order automatically:
+            ./scripts/rebuild-client.sh {{ client_name }}
+      when: not traefik_compose.stat.exists
+
     - name: Load client secrets
       community.sops.load_vars:
         file: "{{ playbook_dir }}/../../secrets/clients/{{ client_name }}.sops.yaml"
@@ -32,6 +51,7 @@
       when: client_secrets.authentik_domain is defined
 
   roles:
+    - role: mailgun
     - role: authentik
     - role: nextcloud
 

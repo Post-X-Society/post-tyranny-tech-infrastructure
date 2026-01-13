@@ -1,0 +1,22 @@
+---
+# Display Authentik email configuration status
+# Email settings are configured via docker-compose environment variables
+
+- name: Display Authentik email configuration status
+  debug:
+    msg: |
+      ========================================
+      Authentik Email Configuration
+      ========================================
+
+      Email is configured via Docker Compose environment variables:
+      AUTHENTIK_EMAIL__HOST: smtp.eu.mailgun.org
+      AUTHENTIK_EMAIL__FROM: {{ inventory_hostname }}@mg.vrije.cloud
+
+      Status: ✓ Configured
+
+      Authentik can now send:
+      - Password reset emails
+      - User invitation emails
+      - Notification emails
+      ========================================

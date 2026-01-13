@@ -1,0 +1,46 @@
+---
+# Configure Nextcloud email settings via Mailgun SMTP
+
+- name: Determine SMTP credentials source
+  set_fact:
+    smtp_user: "{{ mailgun_smtp_user | default(client_secrets.mailgun_smtp_user) }}"
+    smtp_password: "{{ mailgun_smtp_password | default(client_secrets.mailgun_smtp_password) }}"
+  no_log: true
+
+- name: Configure SMTP email settings
+  shell: |
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtpmode --value="smtp"
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtpsecure --value="tls"
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtphost --value="smtp.eu.mailgun.org"
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtpport --value="587"
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtpauth --value="1"
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtpname --value="{{ smtp_user }}"
+    docker exec -u www-data nextcloud php occ config:system:set mail_smtppassword --value="{{ smtp_password }}"
+    docker exec -u www-data nextcloud php occ config:system:set mail_from_address --value="{{ inventory_hostname }}"
+    docker exec -u www-data nextcloud php occ config:system:set mail_domain --value="mg.vrije.cloud"
+  no_log: true
+  register: email_config
+  changed_when: true
+
+- name: Configure admin user email address
+  shell: |
+    docker exec -u www-data nextcloud php occ user:setting {{ client_secrets.nextcloud_admin_user }} settings email "{{ inventory_hostname }}@mg.vrije.cloud"
+  register: admin_email_set
+  changed_when: true
+
+- name: Display email configuration status
+  debug:
+    msg: |
+      ========================================
+      Nextcloud Email Configuration
+      ========================================
+
+      SMTP Host: smtp.eu.mailgun.org
+      SMTP Port: 587 (TLS)
+      From Address: {{ inventory_hostname }}@mg.vrije.cloud
+      Admin Email: {{ inventory_hostname }}@mg.vrije.cloud
+
+      Status: ✓ Configured
+
+      Test: Settings → Basic settings → Send email
+      ========================================

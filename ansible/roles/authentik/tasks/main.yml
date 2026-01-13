@@ -16,3 +16,8 @@
   include_tasks: email.yml
   when: mailgun_smtp_user is defined or (client_secrets.mailgun_smtp_user is defined and client_secrets.mailgun_smtp_user != "" and "PLACEHOLDER" not in client_secrets.mailgun_smtp_user)
   tags: ['authentik', 'email']
+
+- name: Include flows configuration (recovery, invitation)
+  include_tasks: flows.yml
+  when: authentik_bootstrap | default(true)
+  tags: ['authentik', 'flows']

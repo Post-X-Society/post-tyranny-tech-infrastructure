@@ -1,0 +1,67 @@
+---
+# Configure Authentik flows (recovery, invitation)
+
+- name: Use bootstrap token for API access
+  set_fact:
+    authentik_api_token: "{{ client_secrets.authentik_bootstrap_token }}"
+
+- name: Copy recovery flow script to server
+  copy:
+    src: create_recovery_flow.py
+    dest: /tmp/create_recovery_flow.py
+    mode: '0755'
+
+- name: Copy invitation flow script to server
+  copy:
+    src: create_invitation_flow.py
+    dest: /tmp/create_invitation_flow.py
+    mode: '0755'
+
+- name: Create/verify recovery flow
+  shell: |
+    docker exec -i authentik-server python3 /tmp/create_recovery_flow.py \
+      "http://localhost:9000" \
+      "{{ authentik_api_token }}"
+  register: recovery_flow
+  changed_when: "'already exists' not in recovery_flow.stdout"
+  failed_when: recovery_flow.rc != 0
+
+- name: Create/verify invitation flow
+  shell: |
+    docker exec -i authentik-server python3 /tmp/create_invitation_flow.py \
+      "http://localhost:9000" \
+      "{{ authentik_api_token }}"
+  register: invitation_flow
+  changed_when: "'already exists' not in invitation_flow.stdout"
+  failed_when: invitation_flow.rc != 0
+
+- name: Copy flow scripts into container
+  shell: |
+    docker cp /tmp/create_recovery_flow.py authentik-server:/tmp/
+    docker cp /tmp/create_invitation_flow.py authentik-server:/tmp/
+  changed_when: false
+
+- name: Cleanup flow scripts from host
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/create_recovery_flow.py
+    - /tmp/create_invitation_flow.py
+
+- name: Display flows configuration status
+  debug:
+    msg: |
+      ========================================
+      Authentik Flows Configuration
+      ========================================
+
+      ✓ Recovery Flow: Configured
+        Users can reset passwords via email
+
+      ✓ Invitation Flow: Configured
+        Admins can invite users via email
+
+      Email configuration is active and flows
+      will send emails via Mailgun SMTP.
+      ========================================

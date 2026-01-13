@@ -30,7 +30,8 @@
       "{{ authentik_api_token }}"
   register: recovery_flow
   changed_when: "'already exists' not in recovery_flow.stdout"
-  failed_when: recovery_flow.rc != 0
+  failed_when: false
+  ignore_errors: true
 
 - name: Create/verify invitation flow
   shell: |

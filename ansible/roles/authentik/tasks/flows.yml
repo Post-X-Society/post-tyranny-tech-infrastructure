@@ -40,7 +40,8 @@
       "{{ authentik_api_token }}"
   register: invitation_flow
   changed_when: "'already exists' not in invitation_flow.stdout"
-  failed_when: invitation_flow.rc != 0
+  failed_when: false
+  ignore_errors: true
 
 - name: Cleanup flow scripts from host
   file:

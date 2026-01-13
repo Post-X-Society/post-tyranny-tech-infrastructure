@@ -17,6 +17,12 @@
     dest: /tmp/create_invitation_flow.py
     mode: '0755'
 
+- name: Copy flow scripts into container
+  shell: |
+    docker cp /tmp/create_recovery_flow.py authentik-server:/tmp/
+    docker cp /tmp/create_invitation_flow.py authentik-server:/tmp/
+  changed_when: false
+
 - name: Create/verify recovery flow
   shell: |
     docker exec -i authentik-server python3 /tmp/create_recovery_flow.py \
@@ -34,12 +40,6 @@
   register: invitation_flow
   changed_when: "'already exists' not in invitation_flow.stdout"
   failed_when: invitation_flow.rc != 0
-
-- name: Copy flow scripts into container
-  shell: |
-    docker cp /tmp/create_recovery_flow.py authentik-server:/tmp/
-    docker cp /tmp/create_invitation_flow.py authentik-server:/tmp/
-  changed_when: false
 
 - name: Cleanup flow scripts from host
   file:

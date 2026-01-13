@@ -1,0 +1,40 @@
+---
+# Cleanup playbook - run before destroying servers
+# Removes SMTP credentials and other cloud resources
+
+- name: Cleanup server resources before destruction
+  hosts: all
+  become: no
+  gather_facts: no
+
+  pre_tasks:
+    - name: Determine client name from hostname
+      set_fact:
+        client_name: "{{ inventory_hostname }}"
+
+    - name: Load client secrets
+      community.sops.load_vars:
+        file: "{{ playbook_dir }}/../../secrets/clients/{{ client_name }}.sops.yaml"
+        name: client_secrets
+        age_keyfile: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
+      no_log: true
+
+  tasks:
+    - name: Delete Mailgun SMTP credentials
+      include_role:
+        name: mailgun
+        tasks_from: delete
+
+    - name: Display cleanup summary
+      debug:
+        msg: |
+          ============================================================
+          Cleanup complete for: {{ client_name }}
+          ============================================================
+
+          Removed:
+          ✓ Mailgun SMTP credential ({{ inventory_hostname }}@mg.vrije.cloud)
+
+          You can now safely destroy the server with:
+          cd ../tofu && tofu destroy -target='hcloud_server.client["{{ client_name }}"]'
+          ============================================================

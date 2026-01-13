@@ -78,10 +78,19 @@ echo ""
 echo -e "${YELLOW}Starting destruction of client: $CLIENT_NAME${NC}"
 echo ""
 
-# Step 1: Clean up Docker containers and volumes on the server (if reachable)
-echo -e "${YELLOW}[1/2] Cleaning up Docker containers and volumes...${NC}"
+# Step 1: Delete Mailgun SMTP credentials
+echo -e "${YELLOW}[1/3] Deleting Mailgun SMTP credentials...${NC}"
 
 cd "$PROJECT_ROOT/ansible"
+
+# Run cleanup playbook to delete SMTP credentials
+~/.local/bin/ansible-playbook -i hcloud.yml playbooks/cleanup.yml --limit "$CLIENT_NAME" 2>/dev/null || echo -e "${YELLOW}⚠ Could not delete SMTP credentials (API key may not be configured)${NC}"
+
+echo -e "${GREEN}✓ SMTP credentials cleanup attempted${NC}"
+echo ""
+
+# Step 2: Clean up Docker containers and volumes on the server (if reachable)
+echo -e "${YELLOW}[2/3] Cleaning up Docker containers and volumes...${NC}"
 
 if ~/.local/bin/ansible -i hcloud.yml "$CLIENT_NAME" -m ping -o &>/dev/null; then
     echo "Server is reachable, cleaning up Docker resources..."
@@ -103,8 +112,8 @@ fi
 
 echo ""
 
-# Step 2: Destroy infrastructure with OpenTofu
-echo -e "${YELLOW}[2/2] Destroying infrastructure with OpenTofu...${NC}"
+# Step 3: Destroy infrastructure with OpenTofu
+echo -e "${YELLOW}[3/3] Destroying infrastructure with OpenTofu...${NC}"
 
 cd "$PROJECT_ROOT/tofu"
 
@@ -125,6 +134,7 @@ echo -e "${GREEN}✓ Client '$CLIENT_NAME' destroyed successfully${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "The following have been removed:"
+echo "  ✓ Mailgun SMTP credentials"
 echo "  ✓ VPS server"
 echo "  ✓ DNS records (if managed by OpenTofu)"
 echo "  ✓ Firewall rules (if not shared)"
@@ -133,5 +143,5 @@ echo -e "${YELLOW}Note: Secrets file still exists at:${NC}"
 echo "  $SECRETS_FILE"
 echo ""
 echo "To rebuild this client, run:"
-echo "  ./scripts/deploy-client.sh $CLIENT_NAME"
+echo "  ./scripts/rebuild-client.sh $CLIENT_NAME"
 echo ""

@@ -48,13 +48,17 @@ services:
       # Branding
       AUTHENTIK_BRANDING__TITLE: "{{ client_name | title }} SSO"
 
-      # Email configuration (optional, configure later)
-      # AUTHENTIK_EMAIL__HOST: "smtp.example.com"
-      # AUTHENTIK_EMAIL__PORT: "587"
-      # AUTHENTIK_EMAIL__USERNAME: "user@example.com"
-      # AUTHENTIK_EMAIL__PASSWORD: "password"
-      # AUTHENTIK_EMAIL__USE_TLS: "true"
-      # AUTHENTIK_EMAIL__FROM: "authentik@example.com"
+      # Email configuration
+{% if mailgun_smtp_user is defined or (client_secrets.mailgun_smtp_user is defined and client_secrets.mailgun_smtp_user != "" and "PLACEHOLDER" not in client_secrets.mailgun_smtp_user) %}
+      AUTHENTIK_EMAIL__HOST: "smtp.eu.mailgun.org"
+      AUTHENTIK_EMAIL__PORT: "587"
+      AUTHENTIK_EMAIL__USERNAME: "{{ mailgun_smtp_user | default(client_secrets.mailgun_smtp_user) }}"
+      AUTHENTIK_EMAIL__PASSWORD: "{{ mailgun_smtp_password | default(client_secrets.mailgun_smtp_password) }}"
+      AUTHENTIK_EMAIL__USE_TLS: "true"
+      AUTHENTIK_EMAIL__FROM: "Vrije Cloud <{{ inventory_hostname }}@mg.vrije.cloud>"
+{% else %}
+      # Email not configured - set mailgun_smtp_user/password in secrets
+{% endif %}
 
     volumes:
       - authentik-media:/media
@@ -110,11 +114,22 @@ services:
       AUTHENTIK_BOOTSTRAP_TOKEN: "{{ client_secrets.authentik_bootstrap_token }}"
       AUTHENTIK_BOOTSTRAP_EMAIL: "{{ client_secrets.authentik_bootstrap_email | default('admin@' + client_domain) }}"
 
+      # Email configuration (must match server)
+{% if mailgun_smtp_user is defined or (client_secrets.mailgun_smtp_user is defined and client_secrets.mailgun_smtp_user != "" and "PLACEHOLDER" not in client_secrets.mailgun_smtp_user) %}
+      AUTHENTIK_EMAIL__HOST: "smtp.eu.mailgun.org"
+      AUTHENTIK_EMAIL__PORT: "587"
+      AUTHENTIK_EMAIL__USERNAME: "{{ mailgun_smtp_user | default(client_secrets.mailgun_smtp_user) }}"
+      AUTHENTIK_EMAIL__PASSWORD: "{{ mailgun_smtp_password | default(client_secrets.mailgun_smtp_password) }}"
+      AUTHENTIK_EMAIL__USE_TLS: "true"
+      AUTHENTIK_EMAIL__FROM: "Vrije Cloud <{{ inventory_hostname }}@mg.vrije.cloud>"
+{% endif %}
+
     volumes:
       - authentik-media:/media
       - authentik-templates:/templates
 
     networks:
+      - {{ authentik_traefik_network }}
       - {{ authentik_network }}
 
     depends_on:

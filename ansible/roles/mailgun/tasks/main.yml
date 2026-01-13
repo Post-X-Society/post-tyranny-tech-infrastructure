@@ -1,0 +1,103 @@
+---
+# Mailgun SMTP credential management via API
+
+- name: Check if Mailgun API key is configured
+  set_fact:
+    mailgun_api_configured: "{{ client_secrets.mailgun_api_key is defined and client_secrets.mailgun_api_key != '' and 'PLACEHOLDER' not in client_secrets.mailgun_api_key }}"
+    smtp_credentials_exist: "{{ client_secrets.mailgun_smtp_user is defined and client_secrets.mailgun_smtp_user != '' and 'PLACEHOLDER' not in client_secrets.mailgun_smtp_user and client_secrets.mailgun_smtp_password is defined and client_secrets.mailgun_smtp_password != '' }}"
+
+- name: Use existing SMTP credentials from secrets (skip API creation)
+  set_fact:
+    mailgun_smtp_user: "{{ client_secrets.mailgun_smtp_user }}"
+    mailgun_smtp_password: "{{ client_secrets.mailgun_smtp_password }}"
+  when: smtp_credentials_exist
+  no_log: true
+
+- name: Create unique SMTP credential via Mailgun API
+  when: mailgun_api_configured and not smtp_credentials_exist
+  block:
+    - name: Generate secure SMTP password
+      shell: python3 -c "import secrets, string; print(''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)))"
+      register: generated_password
+      changed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: Create Python script for Mailgun API credential creation
+      copy:
+        content: |
+          import sys, json, urllib.request
+
+          domain = "{{ 'mg.vrije.cloud' }}"
+          login = "{{ inventory_hostname }}@mg.vrije.cloud"
+          password = "{{ generated_password.stdout }}"
+          api_key = "{{ client_secrets.mailgun_api_key }}"
+
+          # Create SMTP credential via Mailgun API (EU region)
+          url = f"https://api.eu.mailgun.net/v3/domains/{domain}/credentials"
+          data = urllib.parse.urlencode({'login': login, 'password': password}).encode()
+          req = urllib.request.Request(url, data=data, method='POST')
+          req.add_header('Authorization', f'Basic {__import__("base64").b64encode(f"api:{api_key}".encode()).decode()}')
+
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  result = json.loads(resp.read())
+                  print(json.dumps({"success": True, "login": login, "password": password, "message": result.get("message", "Created")}))
+          except urllib.error.HTTPError as e:
+              error_data = e.read().decode()
+              if "already exists" in error_data or e.code == 409:
+                  # Credential already exists - update password instead
+                  update_url = f"https://api.eu.mailgun.net/v3/domains/{domain}/credentials/{urllib.parse.quote(login)}"
+                  update_data = urllib.parse.urlencode({'password': password}).encode()
+                  update_req = urllib.request.Request(update_url, data=update_data, method='PUT')
+                  update_req.add_header('Authorization', f'Basic {__import__("base64").b64encode(f"api:{api_key}".encode()).decode()}')
+                  with urllib.request.urlopen(update_req, timeout=30) as resp:
+                      result = json.loads(resp.read())
+                      print(json.dumps({"success": True, "login": login, "password": password, "message": "Updated existing credential"}))
+              else:
+                  print(json.dumps({"success": False, "error": error_data}), file=sys.stderr)
+                  sys.exit(1)
+        dest: /tmp/mailgun_create_credential.py
+        mode: '0700'
+      delegate_to: localhost
+      become: false
+
+    - name: Execute Mailgun credential creation
+      command: python3 /tmp/mailgun_create_credential.py
+      register: mailgun_result
+      changed_when: true
+      delegate_to: localhost
+      become: false
+      no_log: false
+
+    - name: Parse Mailgun API result
+      set_fact:
+        mailgun_credential: "{{ mailgun_result.stdout | from_json }}"
+      no_log: true
+
+    - name: Cleanup credential creation script
+      file:
+        path: /tmp/mailgun_create_credential.py
+        state: absent
+      delegate_to: localhost
+      become: false
+
+    - name: Display credential creation result
+      debug:
+        msg: |
+          ========================================
+          Mailgun SMTP Credential Created
+          ========================================
+
+          Server: {{ inventory_hostname }}
+          Email: {{ mailgun_credential.login }}
+          Status: {{ mailgun_credential.message }}
+
+          This credential is unique to this server for security isolation.
+          ========================================
+
+    - name: Store credentials in fact for email configuration
+      set_fact:
+        mailgun_smtp_user: "{{ mailgun_credential.login }}"
+        mailgun_smtp_password: "{{ mailgun_credential.password }}"
+      no_log: true

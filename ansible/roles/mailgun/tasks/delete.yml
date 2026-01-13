@@ -1,0 +1,64 @@
+---
+# Delete Mailgun SMTP credential for a server
+
+- name: Check if Mailgun API key is configured
+  set_fact:
+    mailgun_api_configured: "{{ client_secrets.mailgun_api_key is defined and client_secrets.mailgun_api_key != '' and 'PLACEHOLDER' not in client_secrets.mailgun_api_key }}"
+
+- name: Delete SMTP credential for this server
+  block:
+    - name: Create Python script for Mailgun API credential deletion
+      copy:
+        content: |
+          import sys, json, urllib.request, urllib.parse
+
+          domain = "mg.vrije.cloud"
+          login = "{{ inventory_hostname }}@mg.vrije.cloud"
+          api_key = "{{ client_secrets.mailgun_api_key }}"
+
+          # Delete SMTP credential via Mailgun API (EU region)
+          url = f"https://api.eu.mailgun.net/v3/{domain}/credentials/{urllib.parse.quote(login)}"
+          req = urllib.request.Request(url, method='DELETE')
+          req.add_header('Authorization', f'Basic {__import__("base64").b64encode(f"api:{api_key}".encode()).decode()}')
+
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  result = json.loads(resp.read())
+                  print(json.dumps({"success": True, "message": f"Deleted credential for {login}"}))
+          except urllib.error.HTTPError as e:
+              if e.code == 404:
+                  print(json.dumps({"success": True, "message": f"Credential {login} does not exist (already deleted)"}))
+              else:
+                  error_data = e.read().decode()
+                  print(json.dumps({"success": False, "error": error_data}), file=sys.stderr)
+                  sys.exit(1)
+        dest: /tmp/mailgun_delete_credential.py
+        mode: '0700'
+      delegate_to: localhost
+
+    - name: Execute Mailgun credential deletion
+      command: python3 /tmp/mailgun_delete_credential.py
+      register: mailgun_delete_result
+      changed_when: true
+      delegate_to: localhost
+      failed_when: false
+
+    - name: Cleanup deletion script
+      file:
+        path: /tmp/mailgun_delete_credential.py
+        state: absent
+      delegate_to: localhost
+
+    - name: Display deletion result
+      debug:
+        msg: |
+          ========================================
+          Mailgun SMTP Credential Deleted
+          ========================================
+
+          Server: {{ inventory_hostname }}
+          Email: {{ inventory_hostname }}@mg.vrije.cloud
+          Status: {{ (mailgun_delete_result.stdout | from_json).message }}
+          ========================================
+
+  when: mailgun_api_configured

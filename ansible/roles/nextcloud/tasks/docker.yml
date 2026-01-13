@@ -25,5 +25,5 @@
     host: localhost
     port: 80
     delay: 10
-    timeout: 120
+    timeout: 300
   when: nextcloud_deploy.changed

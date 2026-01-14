@@ -1,0 +1,97 @@
+---
+# Configure 2FA/MFA enforcement in Authentik
+
+- name: Use bootstrap token for API access
+  set_fact:
+    authentik_api_token: "{{ client_secrets.authentik_bootstrap_token }}"
+
+- name: Get TOTP setup stage UUID
+  shell: |
+    docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
+      'http://localhost:9000/api/v3/stages/authenticator/totp/?name=default-authenticator-totp-setup'
+  register: totp_stage_result
+  changed_when: false
+
+- name: Parse TOTP stage UUID
+  set_fact:
+    totp_stage_pk: "{{ (totp_stage_result.stdout | from_json).results[0].pk }}"
+
+- name: Get current MFA validation stage configuration
+  shell: |
+    docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
+      'http://localhost:9000/api/v3/stages/authenticator/validate/?name=default-authentication-mfa-validation'
+  register: mfa_stage_result
+  changed_when: false
+
+- name: Parse MFA validation stage
+  set_fact:
+    mfa_stage: "{{ (mfa_stage_result.stdout | from_json).results[0] }}"
+
+- name: Check if MFA enforcement needs configuration
+  set_fact:
+    mfa_needs_update: "{{ mfa_stage.not_configured_action != 'configure' or totp_stage_pk not in (mfa_stage.configuration_stages | default([])) }}"
+
+- name: Create Python script for MFA enforcement
+  copy:
+    content: |
+      import sys, json, urllib.request
+
+      base_url = "http://localhost:9000"
+      token = "{{ authentik_api_token }}"
+      stage_pk = "{{ mfa_stage.pk }}"
+      totp_stage_pk = "{{ totp_stage_pk }}"
+
+      # Prepare the update payload
+      payload = {
+          "name": "{{ mfa_stage.name }}",
+          "not_configured_action": "configure",
+          "device_classes": ["totp", "webauthn", "static"],
+          "configuration_stages": [totp_stage_pk]
+      }
+
+      # Make PATCH request to update the stage
+      url = f"{base_url}/api/v3/stages/authenticator/validate/{stage_pk}/"
+      data = json.dumps(payload).encode()
+      req = urllib.request.Request(url, data=data, method='PATCH')
+      req.add_header('Authorization', f'Bearer {token}')
+      req.add_header('Content-Type', 'application/json')
+
+      try:
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              result = json.loads(resp.read())
+              print(json.dumps({"success": True, "message": "MFA enforcement configured", "not_configured_action": result.get("not_configured_action")}))
+      except urllib.error.HTTPError as e:
+          error_data = e.read().decode()
+          print(json.dumps({"success": False, "error": error_data}), file=sys.stderr)
+          sys.exit(1)
+    dest: /tmp/configure_mfa.py
+    mode: '0755'
+  when: mfa_needs_update
+
+- name: Configure MFA enforcement via API
+  shell: docker exec -i authentik-server python3 < /tmp/configure_mfa.py
+  register: mfa_config_result
+  when: mfa_needs_update
+
+- name: Cleanup MFA script
+  file:
+    path: /tmp/configure_mfa.py
+    state: absent
+  when: mfa_needs_update
+
+- name: Display MFA configuration status
+  debug:
+    msg: |
+      ========================================
+      Authentik 2FA/MFA Enforcement
+      ========================================
+
+      Status: {% if mfa_needs_update %}✓ Configured{% else %}✓ Already configured{% endif %}
+
+      Configuration:
+      - Not configured action: Force user to configure authenticator
+      - Supported methods: TOTP, WebAuthn, Static backup codes
+      - Configuration stage: default-authenticator-totp-setup
+
+      Users will be required to set up 2FA on their next login.
+      ========================================

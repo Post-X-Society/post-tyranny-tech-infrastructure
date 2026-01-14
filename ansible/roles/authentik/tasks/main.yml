@@ -21,3 +21,8 @@
   include_tasks: flows.yml
   when: authentik_bootstrap | default(true)
   tags: ['authentik', 'flows']
+
+- name: Include MFA/2FA enforcement configuration
+  include_tasks: mfa.yml
+  when: authentik_bootstrap | default(true)
+  tags: ['authentik', 'mfa', '2fa']

@@ -40,6 +40,18 @@
         age_keyfile: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
       no_log: true
 
+    - name: Load shared secrets (Mailgun API key, etc.)
+      community.sops.load_vars:
+        file: "{{ playbook_dir }}/../../secrets/shared.sops.yaml"
+        name: shared_secrets
+        age_keyfile: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') }}"
+      no_log: true
+
+    - name: Merge shared secrets into client_secrets
+      set_fact:
+        client_secrets: "{{ client_secrets | combine(shared_secrets) }}"
+      no_log: true
+
     - name: Set client domain from secrets
       set_fact:
         client_domain: "{{ client_secrets.client_domain }}"

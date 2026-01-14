@@ -106,9 +106,11 @@ cd "$PROJECT_ROOT/tofu"
 
 # Check if already exists
 if tofu state list 2>/dev/null | grep -q "hcloud_server.client\[\"$CLIENT_NAME\"\]"; then
-    echo -e "${YELLOW}⚠ Server already exists, skipping provisioning${NC}"
+    echo -e "${YELLOW}⚠ Server already exists, applying any missing DNS records...${NC}"
+    tofu apply -auto-approve -var-file="terraform.tfvars"
 else
-    tofu apply -auto-approve -var-file="terraform.tfvars" -target="hcloud_server.client[\"$CLIENT_NAME\"]"
+    # Apply full infrastructure (server + DNS)
+    tofu apply -auto-approve -var-file="terraform.tfvars"
 
     echo ""
     echo -e "${GREEN}✓ Infrastructure provisioned${NC}"

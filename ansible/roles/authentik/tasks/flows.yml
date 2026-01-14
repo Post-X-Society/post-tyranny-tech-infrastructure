@@ -1,5 +1,5 @@
 ---
-# Configure Authentik flows (invitation, recovery, 2FA) via API
+# Configure Authentik flows (invitation, recovery, 2FA) via Blueprints
 
 - name: Use bootstrap token for API access
   set_fact:
@@ -21,63 +21,80 @@
   register: api_wait
   changed_when: false
 
-- name: Copy invitation flow configuration script to server
-  copy:
-    src: configure_invitation_flow.py
-    dest: /tmp/configure_invitation_flow.py
+- name: Create blueprints directory on server
+  file:
+    path: "{{ authentik_config_dir }}/blueprints"
+    state: directory
     mode: '0755'
 
-- name: Copy recovery flow configuration script to server
+- name: Copy custom flows blueprint to server
   copy:
-    src: configure_recovery_flow.py
-    dest: /tmp/configure_recovery_flow.py
-    mode: '0755'
+    src: custom-flows.yaml
+    dest: "{{ authentik_config_dir }}/blueprints/custom-flows.yaml"
+    mode: '0644'
+  register: blueprint_copied
 
-- name: Copy 2FA enforcement configuration script to server
-  copy:
-    src: configure_2fa_enforcement.py
-    dest: /tmp/configure_2fa_enforcement.py
-    mode: '0755'
-
-- name: Copy scripts into container
+- name: Copy blueprint into authentik-worker container
   shell: |
-    docker cp /tmp/configure_invitation_flow.py authentik-server:/tmp/
-    docker cp /tmp/configure_recovery_flow.py authentik-server:/tmp/
-    docker cp /tmp/configure_2fa_enforcement.py authentik-server:/tmp/
+    docker cp "{{ authentik_config_dir }}/blueprints/custom-flows.yaml" authentik-worker:/blueprints/custom-flows.yaml
+  changed_when: blueprint_copied.changed
+
+- name: Copy blueprint into authentik-server container
+  shell: |
+    docker cp "{{ authentik_config_dir }}/blueprints/custom-flows.yaml" authentik-server:/blueprints/custom-flows.yaml
+  changed_when: blueprint_copied.changed
+
+- name: Wait for blueprint to be discovered and applied
+  shell: |
+    echo "Waiting for blueprint to be discovered and applied..."
+    sleep 10
+
+    # Check if blueprint instance was created
+    i=1
+    while [ $i -le 24 ]; do
+      result=$(docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
+        'http://localhost:9000/api/v3/managed/blueprints/' 2>/dev/null || echo '')
+
+      if echo "$result" | grep -q 'custom-flow-configuration'; then
+        echo "Blueprint instance found"
+
+        # Check if it has been applied successfully
+        if echo "$result" | grep -A 10 'custom-flow-configuration' | grep -q 'successful'; then
+          echo "Blueprint applied successfully"
+          exit 0
+        else
+          echo "Blueprint found but not yet applied, waiting..."
+        fi
+      else
+        echo "Waiting for blueprint discovery... attempt $i/24"
+      fi
+
+      sleep 5
+      i=$((i+1))
+    done
+
+    echo "Blueprint may still be applying, continuing..."
+    exit 0
+  register: blueprint_wait
   changed_when: false
 
-- name: Configure invitation flow
+- name: Verify invitation stage was created
   shell: |
-    docker exec authentik-server python3 /tmp/configure_invitation_flow.py \
-      "http://localhost:9000" \
-      "{{ authentik_api_token }}"
-  register: invitation_result
-  changed_when: "'success' in invitation_result.stdout"
+    docker exec authentik-server curl -sf -H "Authorization: Bearer {{ authentik_api_token }}" \
+      "http://localhost:9000/api/v3/stages/all/" | \
+      python3 -c "import sys, json; data = json.load(sys.stdin); stages = [s for s in data['results'] if 'invitation' in s.get('name', '').lower()]; print(json.dumps({'found': len(stages) > 0, 'count': len(stages)}))"
+  register: invitation_check
+  changed_when: false
+  failed_when: false
 
-- name: Configure recovery flow
+- name: Verify brand recovery flow was set
   shell: |
-    docker exec authentik-server python3 /tmp/configure_recovery_flow.py \
-      "http://localhost:9000" \
-      "{{ authentik_api_token }}"
-  register: recovery_result
-  changed_when: "'success' in recovery_result.stdout"
-
-- name: Configure 2FA enforcement
-  shell: |
-    docker exec authentik-server python3 /tmp/configure_2fa_enforcement.py \
-      "http://localhost:9000" \
-      "{{ authentik_api_token }}"
-  register: twofa_result
-  changed_when: "'success' in twofa_result.stdout"
-
-- name: Cleanup configuration scripts from host
-  file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /tmp/configure_invitation_flow.py
-    - /tmp/configure_recovery_flow.py
-    - /tmp/configure_2fa_enforcement.py
+    docker exec authentik-server curl -sf -H "Authorization: Bearer {{ authentik_api_token }}" \
+      "http://localhost:9000/api/v3/core/brands/" | \
+      python3 -c "import sys, json; data = json.load(sys.stdin); brand = data['results'][0] if data['results'] else {}; print(json.dumps({'recovery_flow_set': brand.get('flow_recovery') is not None}))"
+  register: recovery_check
+  changed_when: false
+  failed_when: false
 
 - name: Display flows configuration status
   debug:
@@ -86,14 +103,24 @@
       Authentik Flows Configuration
       ========================================
 
-      ✓ Invitation Flow: {{ 'Configured' if invitation_result.rc == 0 else 'Failed' }}
-        {{ (invitation_result.stdout | from_json).message | default('') }}
+      Configuration Method: YAML Blueprints
+      Blueprint File: /blueprints/custom-flows.yaml
 
-      ✓ Recovery Flow: {{ 'Configured' if recovery_result.rc == 0 else 'Failed' }}
-        {{ (recovery_result.stdout | from_json).message | default('') }}
+      ✓ Blueprint Deployed: {{ blueprint_copied.changed }}
+      ✓ Blueprint Applied: {{ 'Yes' if 'successfully' in blueprint_wait.stdout else 'In Progress' }}
 
-      ✓ 2FA Enforcement: {{ 'Configured' if twofa_result.rc == 0 else 'Failed' }}
-        {{ (twofa_result.stdout | from_json).message | default('') }}
+      Verification:
+      {{ invitation_check.stdout | default('Invitation stage: Checking...') }}
+      {{ recovery_check.stdout | default('Recovery flow: Checking...') }}
+
+      Note: Authentik applies blueprints asynchronously.
+      Changes should be visible within 1-2 minutes.
+
+      To verify manually:
+      - Login to https://{{ authentik_domain }}
+      - Check Admin > Flows > Stages for invitation stage
+      - Check Admin > System > Brands for recovery flow setting
+      - Check default-authentication-mfa-validation stage for 2FA enforcement
 
       Email configuration is active and flows
       will send emails via Mailgun SMTP.

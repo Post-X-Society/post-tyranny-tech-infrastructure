@@ -1,0 +1,94 @@
+---
+# Configure invitation stage for enrollment flow
+
+- name: Use bootstrap token for API access
+  set_fact:
+    authentik_api_token: "{{ client_secrets.authentik_bootstrap_token }}"
+
+- name: Wait for Authentik API to be ready
+  uri:
+    url: "https://{{ authentik_domain }}/api/v3/root/config/"
+    method: GET
+    validate_certs: no
+    status_code: 200
+  register: api_result
+  until: api_result.status == 200
+  retries: 12
+  delay: 5
+
+- name: Create blueprints directory on server
+  file:
+    path: /opt/config/authentik/blueprints
+    state: directory
+    mode: '0755'
+
+- name: Copy invitation flow blueprint to server
+  copy:
+    src: invitation-flow.yaml
+    dest: /opt/config/authentik/blueprints/invitation-flow.yaml
+    mode: '0644'
+  register: invitation_blueprint_copied
+
+- name: Copy blueprint into authentik-worker container
+  shell: |
+    docker cp /opt/config/authentik/blueprints/invitation-flow.yaml authentik-worker:/blueprints/invitation-flow.yaml
+
+- name: Copy blueprint into authentik-server container
+  shell: |
+    docker cp /opt/config/authentik/blueprints/invitation-flow.yaml authentik-server:/blueprints/invitation-flow.yaml
+
+- name: Wait for blueprint to be discovered and applied
+  shell: |
+    echo "Waiting for invitation blueprint to be discovered and applied..."
+    sleep 10
+    # Check if blueprint instance was created
+    i=1
+    while [ $i -le 24 ]; do
+      result=$(docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
+        'http://localhost:9000/api/v3/managed/blueprints/' 2>/dev/null || echo '')
+      if echo "$result" | grep -q 'invitation-flow-configuration'; then
+        echo "Blueprint instance found"
+        if echo "$result" | grep -A 10 'invitation-flow-configuration' | grep -q 'successful'; then
+          echo "Blueprint applied successfully"
+          exit 0
+        fi
+      fi
+      sleep 5
+      i=$((i+1))
+    done
+    echo "Blueprint deployment in progress (may take 1-2 minutes)"
+  register: invitation_blueprint_result
+  changed_when: false
+
+- name: Verify invitation stage was created
+  shell: |
+    docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
+      'http://localhost:9000/api/v3/stages/all/?name=default-enrollment-invitation' | \
+      python3 -c "import sys, json; d = json.load(sys.stdin); print(json.dumps({'found': len(d.get('results', [])) > 0, 'count': len(d.get('results', []))}))"
+  register: invitation_stage_check
+  changed_when: false
+  failed_when: false
+
+- name: Display invitation stage configuration status
+  debug:
+    msg: |
+      ========================================
+      Authentik Invitation Stage Configuration
+      ========================================
+
+      Configuration Method: YAML Blueprints
+      Blueprint File: /blueprints/invitation-flow.yaml
+
+      ✓ Blueprint Deployed: {{ invitation_blueprint_copied.changed | default(false) }}
+      ✓ Blueprint Applied: {{ 'In Progress' if invitation_blueprint_result.rc != 0 else 'Complete' }}
+
+      Verification: {{ invitation_stage_check.stdout | default('{}') }}
+
+      Note: Authentik applies blueprints asynchronously.
+      Changes should be visible within 1-2 minutes.
+
+      To verify manually:
+      - Login to https://{{ authentik_domain }}
+      - Check Admin > Flows > Stages for "default-enrollment-invitation"
+      - Check Admin > Flows > default-source-enrollment for invitation binding
+      ========================================

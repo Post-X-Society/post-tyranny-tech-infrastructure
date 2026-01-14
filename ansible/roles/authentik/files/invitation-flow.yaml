@@ -1,0 +1,25 @@
+version: 1
+metadata:
+  name: invitation-flow-configuration
+  labels:
+    blueprints.goauthentik.io/description: "Configure invitation stage for enrollment"
+    blueprints.goauthentik.io/instantiate: "true"
+
+entries:
+  # 1. CREATE INVITATION STAGE
+  - model: authentik_stages_invitation.invitationstage
+    identifiers:
+      name: default-enrollment-invitation
+    id: invitation-stage
+    attrs:
+      continue_flow_without_invitation: true
+
+  # 2. BIND INVITATION STAGE TO ENROLLMENT FLOW
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [designation, enrollment]]
+      stage: !KeyOf invitation-stage
+      order: 0
+    attrs:
+      evaluate_on_plan: true
+      re_evaluate_policies: false

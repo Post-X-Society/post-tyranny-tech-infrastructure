@@ -26,3 +26,8 @@
   include_tasks: mfa.yml
   when: authentik_bootstrap | default(true)
   tags: ['authentik', 'mfa', '2fa']
+
+- name: Include invitation stage configuration
+  include_tasks: invitation.yml
+  when: authentik_bootstrap | default(true)
+  tags: ['authentik', 'invitation']

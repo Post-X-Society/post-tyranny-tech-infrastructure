@@ -9,7 +9,7 @@
   shell: |
     i=1
     while [ $i -le 30 ]; do
-      if docker exec authentik-server curl -sf -H "Authorization: Bearer {{ authentik_api_token }}" http://localhost:9000/api/v3/core/tenants/ > /dev/null 2>&1; then
+      if docker exec authentik-server curl -sf -H "Authorization: Bearer {{ authentik_api_token }}" http://localhost:9000/api/v3/flows/instances/ > /dev/null 2>&1; then
         echo "Authentik API is ready"
         exit 0
       fi

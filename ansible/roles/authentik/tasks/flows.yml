@@ -1,55 +1,67 @@
 ---
-# Configure Authentik flows (recovery, invitation)
+# Configure Authentik flows (invitation, recovery, 2FA) via API
 
 - name: Use bootstrap token for API access
   set_fact:
     authentik_api_token: "{{ client_secrets.authentik_bootstrap_token }}"
 
-- name: Copy recovery flow script to server
+- name: Copy invitation flow configuration script to server
   copy:
-    src: create_recovery_flow.py
-    dest: /tmp/create_recovery_flow.py
+    src: configure_invitation_flow.py
+    dest: /tmp/configure_invitation_flow.py
     mode: '0755'
 
-- name: Copy invitation flow script to server
+- name: Copy recovery flow configuration script to server
   copy:
-    src: create_invitation_flow.py
-    dest: /tmp/create_invitation_flow.py
+    src: configure_recovery_flow.py
+    dest: /tmp/configure_recovery_flow.py
     mode: '0755'
 
-- name: Copy flow scripts into container
+- name: Copy 2FA enforcement configuration script to server
+  copy:
+    src: configure_2fa_enforcement.py
+    dest: /tmp/configure_2fa_enforcement.py
+    mode: '0755'
+
+- name: Copy scripts into container
   shell: |
-    docker cp /tmp/create_recovery_flow.py authentik-server:/tmp/
-    docker cp /tmp/create_invitation_flow.py authentik-server:/tmp/
+    docker cp /tmp/configure_invitation_flow.py authentik-server:/tmp/
+    docker cp /tmp/configure_recovery_flow.py authentik-server:/tmp/
+    docker cp /tmp/configure_2fa_enforcement.py authentik-server:/tmp/
   changed_when: false
 
-- name: Create/verify recovery flow
+- name: Configure invitation flow
   shell: |
-    docker exec -i authentik-server python3 /tmp/create_recovery_flow.py \
+    docker exec authentik-server python3 /tmp/configure_invitation_flow.py \
       "http://localhost:9000" \
       "{{ authentik_api_token }}"
-  register: recovery_flow
-  changed_when: "'already exists' not in recovery_flow.stdout"
-  failed_when: false
-  ignore_errors: true
+  register: invitation_result
+  changed_when: "'success' in invitation_result.stdout"
 
-- name: Create/verify invitation flow
+- name: Configure recovery flow
   shell: |
-    docker exec -i authentik-server python3 /tmp/create_invitation_flow.py \
+    docker exec authentik-server python3 /tmp/configure_recovery_flow.py \
       "http://localhost:9000" \
       "{{ authentik_api_token }}"
-  register: invitation_flow
-  changed_when: "'already exists' not in invitation_flow.stdout"
-  failed_when: false
-  ignore_errors: true
+  register: recovery_result
+  changed_when: "'success' in recovery_result.stdout"
 
-- name: Cleanup flow scripts from host
+- name: Configure 2FA enforcement
+  shell: |
+    docker exec authentik-server python3 /tmp/configure_2fa_enforcement.py \
+      "http://localhost:9000" \
+      "{{ authentik_api_token }}"
+  register: twofa_result
+  changed_when: "'success' in twofa_result.stdout"
+
+- name: Cleanup configuration scripts from host
   file:
     path: "{{ item }}"
     state: absent
   loop:
-    - /tmp/create_recovery_flow.py
-    - /tmp/create_invitation_flow.py
+    - /tmp/configure_invitation_flow.py
+    - /tmp/configure_recovery_flow.py
+    - /tmp/configure_2fa_enforcement.py
 
 - name: Display flows configuration status
   debug:
@@ -58,11 +70,14 @@
       Authentik Flows Configuration
       ========================================
 
-      ✓ Recovery Flow: Configured
-        Users can reset passwords via email
+      ✓ Invitation Flow: {{ 'Configured' if invitation_result.rc == 0 else 'Failed' }}
+        {{ (invitation_result.stdout | from_json).message | default('') }}
 
-      ✓ Invitation Flow: Configured
-        Admins can invite users via email
+      ✓ Recovery Flow: {{ 'Configured' if recovery_result.rc == 0 else 'Failed' }}
+        {{ (recovery_result.stdout | from_json).message | default('') }}
+
+      ✓ 2FA Enforcement: {{ 'Configured' if twofa_result.rc == 0 else 'Failed' }}
+        {{ (twofa_result.stdout | from_json).message | default('') }}
 
       Email configuration is active and flows
       will send emails via Mailgun SMTP.

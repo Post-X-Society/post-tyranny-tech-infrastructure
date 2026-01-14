@@ -5,6 +5,20 @@
   set_fact:
     authentik_api_token: "{{ client_secrets.authentik_bootstrap_token }}"
 
+- name: Wait for Authentik API to be ready
+  shell: |
+    for i in {1..30}; do
+      if docker exec authentik-server curl -sf -H "Authorization: Bearer {{ authentik_api_token }}" http://localhost:9000/api/v3/core/tenants/ > /dev/null 2>&1; then
+        echo "Authentik API is ready"
+        exit 0
+      fi
+      echo "Waiting for Authentik API... attempt $i/30"
+      sleep 5
+    done
+    exit 1
+  register: api_wait
+  changed_when: false
+
 - name: Copy invitation flow configuration script to server
   copy:
     src: configure_invitation_flow.py

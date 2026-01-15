@@ -1,0 +1,165 @@
+version: 1
+metadata:
+  name: public-enrollment-flow
+  labels:
+    blueprints.goauthentik.io/description: "Public enrollment flow with invitation support"
+    blueprints.goauthentik.io/instantiate: "true"
+
+entries:
+  # 1. CREATE ENROLLMENT FLOW
+  - attrs:
+      designation: enrollment
+      name: Default enrollment Flow
+      title: Welcome to authentik!
+      authentication: none
+    identifiers:
+      slug: default-enrollment-flow
+    model: authentik_flows.flow
+    id: flow
+
+  # 2. CREATE INVITATION STAGE
+  - attrs:
+      continue_flow_without_invitation: true
+    identifiers:
+      name: default-enrollment-invitation
+    id: invitation-stage
+    model: authentik_stages_invitation.invitationstage
+
+  # 3. CREATE PROMPT FIELDS
+  - attrs:
+      order: 0
+      placeholder: Username
+      placeholder_expression: false
+      required: true
+      type: username
+      field_key: username
+      label: Username
+    identifiers:
+      name: default-enrollment-field-username
+    id: prompt-field-username
+    model: authentik_stages_prompt.prompt
+
+  - attrs:
+      order: 1
+      placeholder: Name
+      placeholder_expression: false
+      required: true
+      type: text
+      field_key: name
+      label: Name
+    identifiers:
+      name: default-enrollment-field-name
+    id: prompt-field-name
+    model: authentik_stages_prompt.prompt
+
+  - attrs:
+      order: 2
+      placeholder: Email
+      placeholder_expression: false
+      required: true
+      type: email
+      field_key: email
+      label: Email
+    identifiers:
+      name: default-enrollment-field-email
+    id: prompt-field-email
+    model: authentik_stages_prompt.prompt
+
+  - attrs:
+      order: 3
+      placeholder: Password
+      placeholder_expression: false
+      required: true
+      type: password
+      field_key: password
+      label: Password
+    identifiers:
+      name: default-enrollment-field-password
+    id: prompt-field-password
+    model: authentik_stages_prompt.prompt
+
+  - attrs:
+      order: 4
+      placeholder: Password (repeat)
+      placeholder_expression: false
+      required: true
+      type: password
+      field_key: password_repeat
+      label: Password (repeat)
+    identifiers:
+      name: default-enrollment-field-password-repeat
+    id: prompt-field-password-repeat
+    model: authentik_stages_prompt.prompt
+
+  # 4. CREATE PROMPT STAGE
+  - attrs:
+      fields:
+        - !KeyOf prompt-field-username
+        - !KeyOf prompt-field-name
+        - !KeyOf prompt-field-email
+        - !KeyOf prompt-field-password
+        - !KeyOf prompt-field-password-repeat
+      validation_policies: []
+    identifiers:
+      name: default-enrollment-prompt
+    id: prompt-stage
+    model: authentik_stages_prompt.promptstage
+
+  # 5. CREATE USER WRITE STAGE
+  - attrs:
+      user_creation_mode: always_create
+      create_users_as_inactive: false
+      create_users_group: null
+      user_path_template: ""
+    identifiers:
+      name: default-enrollment-user-write
+    id: user-write-stage
+    model: authentik_stages_user_write.userwritestage
+
+  # 6. CREATE USER LOGIN STAGE
+  - attrs:
+      session_duration: seconds=0
+    identifiers:
+      name: default-enrollment-user-login
+    id: user-login-stage
+    model: authentik_stages_user_login.userloginstage
+
+  # 7. BIND INVITATION STAGE TO FLOW (order 0)
+  - attrs:
+      evaluate_on_plan: true
+      re_evaluate_policies: false
+    identifiers:
+      order: 0
+      stage: !KeyOf invitation-stage
+      target: !KeyOf flow
+    model: authentik_flows.flowstagebinding
+
+  # 8. BIND PROMPT STAGE TO FLOW (order 10)
+  - attrs:
+      evaluate_on_plan: true
+      re_evaluate_policies: false
+    identifiers:
+      order: 10
+      stage: !KeyOf prompt-stage
+      target: !KeyOf flow
+    model: authentik_flows.flowstagebinding
+
+  # 9. BIND USER WRITE STAGE TO FLOW (order 20)
+  - attrs:
+      evaluate_on_plan: true
+      re_evaluate_policies: false
+    identifiers:
+      order: 20
+      stage: !KeyOf user-write-stage
+      target: !KeyOf flow
+    model: authentik_flows.flowstagebinding
+
+  # 10. BIND USER LOGIN STAGE TO FLOW (order 30)
+  - attrs:
+      evaluate_on_plan: true
+      re_evaluate_policies: false
+    identifiers:
+      order: 30
+      stage: !KeyOf user-login-stage
+      target: !KeyOf flow
+    model: authentik_flows.flowstagebinding

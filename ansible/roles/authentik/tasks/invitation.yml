@@ -22,33 +22,33 @@
     state: directory
     mode: '0755'
 
-- name: Copy invitation flow blueprint to server
+- name: Copy public enrollment flow blueprint to server
   copy:
-    src: invitation-flow.yaml
-    dest: /opt/config/authentik/blueprints/invitation-flow.yaml
+    src: enrollment-flow.yaml
+    dest: /opt/config/authentik/blueprints/enrollment-flow.yaml
     mode: '0644'
-  register: invitation_blueprint_copied
+  register: enrollment_blueprint_copied
 
-- name: Copy blueprint into authentik-worker container
+- name: Copy enrollment blueprint into authentik-worker container
   shell: |
-    docker cp /opt/config/authentik/blueprints/invitation-flow.yaml authentik-worker:/blueprints/invitation-flow.yaml
+    docker cp /opt/config/authentik/blueprints/enrollment-flow.yaml authentik-worker:/blueprints/enrollment-flow.yaml
 
-- name: Copy blueprint into authentik-server container
+- name: Copy enrollment blueprint into authentik-server container
   shell: |
-    docker cp /opt/config/authentik/blueprints/invitation-flow.yaml authentik-server:/blueprints/invitation-flow.yaml
+    docker cp /opt/config/authentik/blueprints/enrollment-flow.yaml authentik-server:/blueprints/enrollment-flow.yaml
 
-- name: Wait for blueprint to be discovered and applied
+- name: Wait for enrollment blueprint to be discovered and applied
   shell: |
-    echo "Waiting for invitation blueprint to be discovered and applied..."
+    echo "Waiting for public enrollment blueprint to be discovered and applied..."
     sleep 10
     # Check if blueprint instance was created
     i=1
     while [ $i -le 24 ]; do
       result=$(docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
         'http://localhost:9000/api/v3/managed/blueprints/' 2>/dev/null || echo '')
-      if echo "$result" | grep -q 'invitation-flow-configuration'; then
+      if echo "$result" | grep -q 'public-enrollment-flow'; then
         echo "Blueprint instance found"
-        if echo "$result" | grep -A 10 'invitation-flow-configuration' | grep -q 'successful'; then
+        if echo "$result" | grep -A 10 'public-enrollment-flow' | grep -q 'successful'; then
           echo "Blueprint applied successfully"
           exit 0
         fi
@@ -57,38 +57,46 @@
       i=$((i+1))
     done
     echo "Blueprint deployment in progress (may take 1-2 minutes)"
-  register: invitation_blueprint_result
+  register: enrollment_blueprint_result
   changed_when: false
 
-- name: Verify invitation stage was created
+- name: Verify enrollment flow was created
   shell: |
     docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
-      'http://localhost:9000/api/v3/stages/all/?name=default-enrollment-invitation' | \
+      'http://localhost:9000/api/v3/flows/instances/?slug=default-enrollment-flow' | \
       python3 -c "import sys, json; d = json.load(sys.stdin); print(json.dumps({'found': len(d.get('results', [])) > 0, 'count': len(d.get('results', []))}))"
-  register: invitation_stage_check
+  register: enrollment_flow_check
   changed_when: false
   failed_when: false
 
-- name: Display invitation stage configuration status
+- name: Display public enrollment flow configuration status
   debug:
     msg: |
       ========================================
-      Authentik Invitation Stage Configuration
+      Authentik Public Enrollment Flow
       ========================================
 
       Configuration Method: YAML Blueprints
-      Blueprint File: /blueprints/invitation-flow.yaml
+      Blueprint File: /blueprints/enrollment-flow.yaml
 
-      ✓ Blueprint Deployed: {{ invitation_blueprint_copied.changed | default(false) }}
-      ✓ Blueprint Applied: {{ 'In Progress' if invitation_blueprint_result.rc != 0 else 'Complete' }}
+      ✓ Blueprint Deployed: {{ enrollment_blueprint_copied.changed | default(false) }}
+      ✓ Blueprint Applied: {{ 'In Progress' if enrollment_blueprint_result.rc != 0 else 'Complete' }}
 
-      Verification: {{ invitation_stage_check.stdout | default('{}') }}
+      Verification: {{ enrollment_flow_check.stdout | default('{}') }}
+
+      Features:
+      - Public self-registration enabled
+      - Invitation token support
+      - User prompts: username, name, email, password
+      - Automatic user creation and login
+      - Set as default enrollment flow in brand
 
       Note: Authentik applies blueprints asynchronously.
       Changes should be visible within 1-2 minutes.
 
       To verify manually:
       - Login to https://{{ authentik_domain }}
-      - Check Admin > Flows > Stages for "default-enrollment-invitation"
-      - Check Admin > Flows > default-source-enrollment for invitation binding
+      - Check Admin > Flows for "default-enrollment-flow"
+      - Check Admin > System > Brands > Flow enrollment
+      - Test enrollment at: https://{{ authentik_domain }}/if/flow/default-enrollment-flow/
       ========================================

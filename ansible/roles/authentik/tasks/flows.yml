@@ -27,22 +27,34 @@
     state: directory
     mode: '0755'
 
-- name: Copy custom flows blueprint to server
+- name: Copy flow blueprints to server
   copy:
-    src: custom-flows.yaml
-    dest: "{{ authentik_config_dir }}/blueprints/custom-flows.yaml"
+    src: "{{ item }}"
+    dest: "{{ authentik_config_dir }}/blueprints/{{ item }}"
     mode: '0644'
-  register: blueprint_copied
+  loop:
+    - custom-flows.yaml
+    - enrollment-flow.yaml
+    - recovery-flow.yaml
+  register: blueprints_copied
 
-- name: Copy blueprint into authentik-worker container
+- name: Copy blueprints into authentik-worker container
   shell: |
-    docker cp "{{ authentik_config_dir }}/blueprints/custom-flows.yaml" authentik-worker:/blueprints/custom-flows.yaml
-  changed_when: blueprint_copied.changed
+    docker cp "{{ authentik_config_dir }}/blueprints/{{ item }}" authentik-worker:/blueprints/{{ item }}
+  loop:
+    - custom-flows.yaml
+    - enrollment-flow.yaml
+    - recovery-flow.yaml
+  when: blueprints_copied.changed
 
-- name: Copy blueprint into authentik-server container
+- name: Copy blueprints into authentik-server container
   shell: |
-    docker cp "{{ authentik_config_dir }}/blueprints/custom-flows.yaml" authentik-server:/blueprints/custom-flows.yaml
-  changed_when: blueprint_copied.changed
+    docker cp "{{ authentik_config_dir }}/blueprints/{{ item }}" authentik-server:/blueprints/{{ item }}
+  loop:
+    - custom-flows.yaml
+    - enrollment-flow.yaml
+    - recovery-flow.yaml
+  when: blueprints_copied.changed
 
 - name: Wait for blueprint to be discovered and applied
   shell: |
@@ -104,10 +116,13 @@
       ========================================
 
       Configuration Method: YAML Blueprints
-      Blueprint File: /blueprints/custom-flows.yaml
+      Blueprints Deployed:
+      - /blueprints/custom-flows.yaml (2FA enforcement)
+      - /blueprints/enrollment-flow.yaml (invitation-only registration)
+      - /blueprints/recovery-flow.yaml (password reset via email)
 
-      ✓ Blueprint Deployed: {{ blueprint_copied.changed }}
-      ✓ Blueprint Applied: {{ 'Yes' if 'successfully' in blueprint_wait.stdout else 'In Progress' }}
+      ✓ Blueprints Deployed: {{ blueprints_copied.changed }}
+      ✓ Blueprints Applied: {{ 'Yes' if 'successfully' in blueprint_wait.stdout else 'In Progress' }}
 
       Verification:
       {{ invitation_check.stdout | default('Invitation stage: Checking...') }}
@@ -116,12 +131,9 @@
       Note: Authentik applies blueprints asynchronously.
       Changes should be visible within 1-2 minutes.
 
-      To verify manually:
-      - Login to https://{{ authentik_domain }}
-      - Check Admin > Flows > Stages for invitation stage
-      - Check Admin > System > Brands for recovery flow setting
-      - Check default-authentication-mfa-validation stage for 2FA enforcement
+      Flow URLs:
+      - Enrollment: https://{{ authentik_domain }}/if/flow/default-enrollment-flow/
+      - Recovery: https://{{ authentik_domain }}/if/flow/default-recovery-flow/
 
-      Email configuration is active and flows
-      will send emails via Mailgun SMTP.
+      Email configuration is active - emails sent via Mailgun SMTP.
       ========================================

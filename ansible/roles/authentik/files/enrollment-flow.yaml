@@ -146,3 +146,10 @@ entries:
       stage: !KeyOf user-write-stage
       target: !KeyOf flow
     model: authentik_flows.flowstagebinding
+
+  # 10. SET AS DEFAULT ENROLLMENT FLOW IN BRAND
+  - attrs:
+      flow_enrollment: !KeyOf flow
+    identifiers:
+      domain: authentik-default
+    model: authentik_tenants.tenant

@@ -1,8 +1,8 @@
 version: 1
 metadata:
-  name: public-enrollment-flow
+  name: invitation-enrollment-flow
   labels:
-    blueprints.goauthentik.io/description: "Public enrollment flow with invitation support"
+    blueprints.goauthentik.io/description: "Invitation-only enrollment flow"
     blueprints.goauthentik.io/instantiate: "true"
 
 entries:
@@ -20,7 +20,7 @@ entries:
 
   # 2. CREATE INVITATION STAGE
   - attrs:
-      continue_flow_without_invitation: true
+      continue_flow_without_invitation: false
     identifiers:
       name: default-enrollment-invitation
     id: invitation-stage

@@ -1,0 +1,63 @@
+---
+# Deploy password recovery flow with email notifications
+- name: Deploy password recovery flow
+  hosts: all
+  gather_facts: no
+  become: yes
+
+  vars:
+    authentik_api_token: "ak_DtA2LG1Z9shl-tw9r0cs34B1G9l8Lpz76GxLf-4OBiUWbiHbAVJ04GYLcZ30"
+    client_domain: "dev.vrije.cloud"
+
+  tasks:
+    - name: Create blueprints directory
+      file:
+        path: /opt/config/authentik/blueprints
+        state: directory
+        mode: '0755'
+
+    - name: Copy recovery flow blueprint
+      copy:
+        src: ../roles/authentik/files/recovery-flow.yaml
+        dest: /opt/config/authentik/blueprints/recovery-flow.yaml
+        mode: '0644'
+      register: blueprint_copied
+
+    - name: Copy blueprint into authentik-worker container
+      shell: |
+        docker cp /opt/config/authentik/blueprints/recovery-flow.yaml authentik-worker:/blueprints/recovery-flow.yaml
+      when: blueprint_copied.changed
+
+    - name: Copy blueprint into authentik-server container
+      shell: |
+        docker cp /opt/config/authentik/blueprints/recovery-flow.yaml authentik-server:/blueprints/recovery-flow.yaml
+      when: blueprint_copied.changed
+
+    - name: Restart authentik-worker to force blueprint discovery
+      shell: docker restart authentik-worker
+      when: blueprint_copied.changed
+
+    - name: Wait for blueprint to be applied
+      shell: |
+        sleep 30
+        docker exec authentik-server curl -sf -H 'Authorization: Bearer {{ authentik_api_token }}' \
+          'http://localhost:9000/api/v3/flows/instances/?slug=default-recovery-flow'
+      register: flow_check
+      retries: 6
+      delay: 10
+      until: flow_check.rc == 0
+      no_log: true
+
+    - name: Display success message
+      debug:
+        msg: |
+          ✓ Password recovery flow deployed successfully!
+
+          Users can now reset their passwords by:
+          1. Going to https://auth.{{ client_domain }}/if/flow/default-recovery-flow/
+          2. Entering their email address
+          3. Receiving a recovery link via email
+          4. Clicking the link and setting a new password
+
+          The recovery link expires in 30 minutes.
+          Emails are sent via Mailgun SMTP (noreply@mg.vrije.cloud)

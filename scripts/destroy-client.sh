@@ -113,7 +113,7 @@ fi
 echo ""
 
 # Step 3: Destroy infrastructure with OpenTofu
-echo -e "${YELLOW}[3/3] Destroying infrastructure with OpenTofu...${NC}"
+echo -e "${YELLOW}[3/4] Destroying infrastructure with OpenTofu...${NC}"
 
 cd "$PROJECT_ROOT/tofu"
 
@@ -128,6 +128,15 @@ tofu apply destroy.tfplan
 # Cleanup plan file
 rm -f destroy.tfplan
 
+echo ""
+
+# Step 4: Update client registry
+echo -e "${YELLOW}[4/4] Updating client registry...${NC}"
+
+"$SCRIPT_DIR/update-registry.sh" "$CLIENT_NAME" destroy
+
+echo ""
+echo -e "${GREEN}✓ Registry updated${NC}"
 echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✓ Client '$CLIENT_NAME' destroyed successfully${NC}"

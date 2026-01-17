@@ -139,7 +139,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Step 1: Provision infrastructure
-echo -e "${YELLOW}[1/3] Provisioning infrastructure with OpenTofu...${NC}"
+echo -e "${YELLOW}[1/4] Provisioning infrastructure with OpenTofu...${NC}"
 
 cd "$PROJECT_ROOT/tofu"
 
@@ -163,7 +163,7 @@ fi
 echo ""
 
 # Step 2: Setup base system
-echo -e "${YELLOW}[2/3] Setting up base system (Docker, Traefik)...${NC}"
+echo -e "${YELLOW}[2/4] Setting up base system (Docker, Traefik)...${NC}"
 
 cd "$PROJECT_ROOT/ansible"
 
@@ -174,12 +174,41 @@ echo -e "${GREEN}✓ Base system configured${NC}"
 echo ""
 
 # Step 3: Deploy applications
-echo -e "${YELLOW}[3/3] Deploying applications (Authentik, Nextcloud, SSO)...${NC}"
+echo -e "${YELLOW}[3/4] Deploying applications (Authentik, Nextcloud, SSO)...${NC}"
 
 ~/.local/bin/ansible-playbook -i hcloud.yml playbooks/deploy.yml --limit "$CLIENT_NAME"
 
 echo ""
 echo -e "${GREEN}✓ Applications deployed${NC}"
+echo ""
+
+# Step 4: Update client registry
+echo -e "${YELLOW}[4/4] Updating client registry...${NC}"
+
+cd "$PROJECT_ROOT/tofu"
+
+# Get server information from Terraform state
+SERVER_IP=$(tofu output -json client_ips 2>/dev/null | jq -r ".\"$CLIENT_NAME\"" || echo "")
+SERVER_ID=$(tofu state show "hcloud_server.client[\"$CLIENT_NAME\"]" 2>/dev/null | grep "^[[:space:]]*id[[:space:]]*=" | awk '{print $3}' | tr -d '"' || echo "")
+SERVER_TYPE=$(tofu state show "hcloud_server.client[\"$CLIENT_NAME\"]" 2>/dev/null | grep "^[[:space:]]*server_type[[:space:]]*=" | awk '{print $3}' | tr -d '"' || echo "")
+SERVER_LOCATION=$(tofu state show "hcloud_server.client[\"$CLIENT_NAME\"]" 2>/dev/null | grep "^[[:space:]]*location[[:space:]]*=" | awk '{print $3}' | tr -d '"' || echo "")
+
+# Determine role (dev is canary, everything else is production by default)
+ROLE="production"
+if [ "$CLIENT_NAME" = "dev" ]; then
+    ROLE="canary"
+fi
+
+# Update registry
+"$SCRIPT_DIR/update-registry.sh" "$CLIENT_NAME" deploy \
+    --role="$ROLE" \
+    --server-ip="$SERVER_IP" \
+    --server-id="$SERVER_ID" \
+    --server-type="$SERVER_TYPE" \
+    --server-location="$SERVER_LOCATION"
+
+echo ""
+echo -e "${GREEN}✓ Registry updated${NC}"
 echo ""
 
 # Calculate duration

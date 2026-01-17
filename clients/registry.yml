@@ -1,0 +1,89 @@
+# Client Registry
+#
+# Single source of truth for all clients in the infrastructure.
+# This file tracks client lifecycle, deployment state, and versions.
+#
+# Status values:
+#   - pending: Client configuration created, not yet deployed
+#   - deployed: Client is live and operational
+#   - maintenance: Under maintenance, may be temporarily unavailable
+#   - offboarding: Being decommissioned
+#   - destroyed: Infrastructure removed, secrets archived
+#
+# Role values:
+#   - canary: Used for testing updates before production rollout
+#   - production: Live client serving real users
+
+clients:
+  dev:
+    status: deployed
+    role: canary
+    deployed_date: 2026-01-17
+    destroyed_date: null
+
+    server:
+      type: cpx22              # 3 vCPU, 4 GB RAM, 80 GB SSD
+      location: fsn1           # Falkenstein, Germany
+      ip: 78.47.191.38
+      id: "117714358"          # Hetzner server ID
+
+    apps:
+      - authentik
+      - nextcloud
+
+    versions:
+      authentik: "2025.10.3"
+      nextcloud: "30.0.17"
+      traefik: "v3.0"
+      ubuntu: "24.04"
+
+    maintenance:
+      last_full_update: 2026-01-17
+      last_security_patch: 2026-01-17
+      last_os_update: 2026-01-17
+      last_backup_verified: null
+
+    urls:
+      authentik: "https://auth.dev.vrije.cloud"
+      nextcloud: "https://nextcloud.dev.vrije.cloud"
+
+    notes: |
+      Canary/test server. Used for testing updates before production rollout.
+      Server was recreated on 2026-01-17 for per-client SSH key implementation.
+
+# Add new clients here as they are deployed
+# Template:
+#
+# clientname:
+#   status: deployed
+#   role: production
+#   deployed_date: YYYY-MM-DD
+#   destroyed_date: null
+#
+#   server:
+#     type: cx22
+#     location: nbg1
+#     ip: 1.2.3.4
+#     id: "12345678"
+#
+#   apps:
+#     - authentik
+#     - nextcloud
+#
+#   versions:
+#     authentik: "2025.10.3"
+#     nextcloud: "30.0.17"
+#     traefik: "v3.0"
+#     ubuntu: "24.04"
+#
+#   maintenance:
+#     last_full_update: YYYY-MM-DD
+#     last_security_patch: YYYY-MM-DD
+#     last_os_update: YYYY-MM-DD
+#     last_backup_verified: null
+#
+#   urls:
+#     authentik: "https://auth.clientname.vrije.cloud"
+#     nextcloud: "https://nextcloud.clientname.vrije.cloud"
+#
+#   notes: ""

@@ -37,7 +37,7 @@ High-level guardian of the infrastructure architecture, ensuring consistency, ma
 | Secrets | SOPS + Age | Simple, no server needed |
 | Hosting | Hetzner | German, family-owned, GDPR |
 | DNS | Hetzner DNS | Single provider simplicity |
-| Identity | Zitadel | Swiss company, AGPL |
+| Identity | Authentik | German project lead |
 | File Sync | Nextcloud | German company, AGPL |
 | Reverse Proxy | Traefik | French company, MIT |
 | Backup | Restic → Hetzner Storage Box | Open source, EU storage |
@@ -48,13 +48,13 @@ High-level guardian of the infrastructure architecture, ensuring consistency, ma
 ### Does NOT Handle
 - Writing OpenTofu configurations (→ Infrastructure Agent)
 - Writing Ansible playbooks or roles (→ Infrastructure Agent)
-- Zitadel-specific configuration (→ Zitadel Agent)
+- Authentik-specific configuration (→ Authentik Agent)
 - Nextcloud-specific configuration (→ Nextcloud Agent)
 - Debugging application issues (→ respective App Agent)
 
 ### Defers To
 - **Infrastructure Agent**: All IaC implementation questions
-- **Zitadel Agent**: Identity, SSO, OIDC specifics
+- **Authentik Agent**: Identity, SSO, OIDC specifics
 - **Nextcloud Agent**: Nextcloud features, `occ` commands
 
 ### Escalates When
@@ -138,6 +138,3 @@ When reviewing proposed changes, verify:
 
 **Good prompt:** "Review this PR that adds a new Ansible role"
 **Response approach:** Check role follows conventions, doesn't violate isolation, uses SOPS for secrets, aligns with existing patterns.
-
-**Redirect prompt:** "How do I configure Zitadel OIDC scopes?"
-**Response:** "This is a Zitadel-specific question. Please ask the Zitadel Agent. I can help if you need to understand how it fits into the overall architecture."

@@ -1,0 +1,7 @@
+# NEVER commit SSH private keys
+*
+
+# Allow README and public keys only
+!.gitignore
+!README.md
+!*.pub

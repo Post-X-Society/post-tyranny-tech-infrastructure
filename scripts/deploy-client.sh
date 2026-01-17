@@ -36,6 +36,17 @@ fi
 
 CLIENT_NAME="$1"
 
+# Check if SSH key exists
+SSH_KEY_FILE="$PROJECT_ROOT/keys/ssh/${CLIENT_NAME}"
+if [ ! -f "$SSH_KEY_FILE" ]; then
+    echo -e "${RED}Error: SSH key not found: $SSH_KEY_FILE${NC}"
+    echo ""
+    echo "Generate SSH key for client first:"
+    echo "  ./scripts/generate-client-keys.sh ${CLIENT_NAME}"
+    echo ""
+    exit 1
+fi
+
 # Check if secrets file exists
 SECRETS_FILE="$PROJECT_ROOT/secrets/clients/${CLIENT_NAME}.sops.yaml"
 if [ ! -f "$SECRETS_FILE" ]; then
@@ -43,7 +54,7 @@ if [ ! -f "$SECRETS_FILE" ]; then
     echo ""
     echo "Create a secrets file first:"
     echo "  1. Copy the template:"
-    echo "     cp secrets/clients/test.sops.yaml secrets/clients/${CLIENT_NAME}.sops.yaml"
+    echo "     cp secrets/clients/template.sops.yaml secrets/clients/${CLIENT_NAME}.sops.yaml"
     echo ""
     echo "  2. Edit with SOPS:"
     echo "     sops secrets/clients/${CLIENT_NAME}.sops.yaml"

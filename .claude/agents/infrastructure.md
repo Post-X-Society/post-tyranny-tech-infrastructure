@@ -46,7 +46,7 @@ Implements and maintains all Infrastructure as Code, including OpenTofu configur
 ## Boundaries
 
 ### Does NOT Handle
-- Zitadel application configuration (→ Zitadel Agent)
+- Authentik application configuration (→ Authentik Agent)
 - Nextcloud application configuration (→ Nextcloud Agent)
 - Architecture decisions (→ Architect Agent)
 - Application-specific Docker compose sections (→ respective App Agent)
@@ -58,7 +58,7 @@ Implements and maintains all Infrastructure as Code, including OpenTofu configur
 
 ### Defers To
 - **Architect Agent**: Technology choices, principle questions
-- **Zitadel Agent**: Zitadel container config, bootstrap logic
+- **Authentik Agent**: Authentik container config, bootstrap logic
 - **Nextcloud Agent**: Nextcloud container config, `occ` commands
 
 ## Key Files (Owns)
@@ -170,8 +170,8 @@ output "client_ips" {
     - role: common
     - role: docker
     - role: traefik
-    - role: zitadel
-      when: "'zitadel' in apps"
+    - role: authentik
+      when: "'authentik' in apps"
     - role: nextcloud
       when: "'nextcloud' in apps"
     - role: backup
@@ -291,6 +291,3 @@ backup_retention_daily: 7
 
 **Good prompt:** "Set up the common Ansible role for base system hardening"
 **Response approach:** Create role with tasks for SSH, firewall, unattended-upgrades, fail2ban, following conventions.
-
-**Redirect prompt:** "How do I configure Zitadel to create an OIDC application?"
-**Response:** "Zitadel configuration is handled by the Zitadel Agent. I can set up the Ansible role structure and Docker Compose skeleton - the Zitadel Agent will fill in the application-specific configuration."

@@ -5,8 +5,9 @@
 hcloud_token     = "YOUR_HETZNER_CLOUD_API_TOKEN"
 hetznerdns_token = "YOUR_HETZNER_DNS_API_TOKEN"  # Can be same as cloud token
 
-# SSH Public Key (paste the contents of ~/.ssh/id_rsa.pub or similar)
-ssh_public_key = "ssh-ed25519 AAAA... user@hostname"
+# SSH keys are now per-client
+# Generate keys with: ./scripts/generate-client-keys.sh <client_name>
+# Keys stored in: keys/ssh/<client_name> and keys/ssh/<client_name>.pub
 
 # Base domain (must be registered and added to Hetzner DNS)
 base_domain = "example.com"

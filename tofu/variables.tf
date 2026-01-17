@@ -12,11 +12,8 @@ variable "hetznerdns_token" {
   sensitive   = true
 }
 
-# SSH Public Key
-variable "ssh_public_key" {
-  description = "SSH public key for server access"
-  type        = string
-}
+# SSH keys are now per-client, stored in keys/ssh/<client>.pub
+# No global ssh_public_key variable needed
 
 # Base Domain (optional - only needed if using DNS)
 variable "base_domain" {

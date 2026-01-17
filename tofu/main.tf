@@ -5,10 +5,11 @@ provider "hcloud" {
 
 # hcloud provider handles both Cloud and DNS resources
 
-# SSH Key Resource
-resource "hcloud_ssh_key" "default" {
-  name       = "infrastructure-deploy-key"
-  public_key = var.ssh_public_key
+# Per-Client SSH Keys
+resource "hcloud_ssh_key" "client" {
+  for_each   = var.clients
+  name       = "client-${each.key}-deploy-key"
+  public_key = file("${path.module}/../keys/ssh/${each.key}.pub")
 }
 
 # Firewall Rules
@@ -57,7 +58,7 @@ resource "hcloud_server" "client" {
   server_type = each.value.server_type
   image       = "ubuntu-24.04"
   location    = each.value.location
-  ssh_keys    = [hcloud_ssh_key.default.id]
+  ssh_keys    = [hcloud_ssh_key.client[each.key].id]
   firewall_ids = [hcloud_firewall.client_firewall.id]
 
   labels = {

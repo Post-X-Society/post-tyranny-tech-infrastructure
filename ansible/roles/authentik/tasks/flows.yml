@@ -1,5 +1,5 @@
 ---
-# Configure Authentik flows (invitation, recovery, 2FA) via Blueprints
+# Configure Authentik flows (invitation, 2FA) via Blueprints
 
 - name: Use bootstrap token for API access
   set_fact:
@@ -35,7 +35,6 @@
   loop:
     - custom-flows.yaml
     - enrollment-flow.yaml
-    - recovery-flow.yaml
   register: blueprints_copied
 
 - name: Copy blueprints into authentik-worker container
@@ -44,7 +43,6 @@
   loop:
     - custom-flows.yaml
     - enrollment-flow.yaml
-    - recovery-flow.yaml
   when: blueprints_copied.changed
 
 - name: Copy blueprints into authentik-server container
@@ -53,7 +51,6 @@
   loop:
     - custom-flows.yaml
     - enrollment-flow.yaml
-    - recovery-flow.yaml
   when: blueprints_copied.changed
 
 - name: Wait for blueprint to be discovered and applied
@@ -99,14 +96,6 @@
   changed_when: false
   failed_when: false
 
-- name: Verify brand recovery flow was set
-  shell: |
-    docker exec authentik-server curl -sf -H "Authorization: Bearer {{ authentik_api_token }}" \
-      "http://localhost:9000/api/v3/core/brands/" | \
-      python3 -c "import sys, json; data = json.load(sys.stdin); brand = data['results'][0] if data['results'] else {}; print(json.dumps({'recovery_flow_set': brand.get('flow_recovery') is not None}))"
-  register: recovery_check
-  changed_when: false
-  failed_when: false
 
 - name: Display flows configuration status
   debug:
@@ -119,21 +108,19 @@
       Blueprints Deployed:
       - /blueprints/custom-flows.yaml (2FA enforcement)
       - /blueprints/enrollment-flow.yaml (invitation-only registration)
-      - /blueprints/recovery-flow.yaml (password reset via email)
 
       ✓ Blueprints Deployed: {{ blueprints_copied.changed }}
       ✓ Blueprints Applied: {{ 'Yes' if 'successfully' in blueprint_wait.stdout else 'In Progress' }}
 
       Verification:
       {{ invitation_check.stdout | default('Invitation stage: Checking...') }}
-      {{ recovery_check.stdout | default('Recovery flow: Checking...') }}
 
       Note: Authentik applies blueprints asynchronously.
       Changes should be visible within 1-2 minutes.
+      Recovery flows must be configured manually in Authentik admin UI.
 
       Flow URLs:
       - Enrollment: https://{{ authentik_domain }}/if/flow/default-enrollment-flow/
-      - Recovery: https://{{ authentik_domain }}/if/flow/default-recovery-flow/
 
       Email configuration is active - emails sent via Mailgun SMTP.
       ========================================

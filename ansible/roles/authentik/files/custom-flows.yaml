@@ -2,7 +2,7 @@ version: 1
 metadata:
   name: custom-flow-configuration
   labels:
-    blueprints.goauthentik.io/description: "Configure invitation, recovery, and 2FA enforcement"
+    blueprints.goauthentik.io/description: "Configure invitation and 2FA enforcement"
     blueprints.goauthentik.io/instantiate: "true"
 
 entries:
@@ -26,15 +26,7 @@ entries:
       evaluate_on_plan: true
       re_evaluate_policies: false
 
-  # 3. SET RECOVERY FLOW IN BRAND
-  # Configures the default brand to use the recovery flow
-  - model: authentik_core.brand
-    identifiers:
-      domain: authentik-default
-    attrs:
-      flow_recovery: !Find [authentik_flows.flow, [designation, recovery]]
-
-  # 4. ENFORCE 2FA CONFIGURATION
+  # 3. ENFORCE 2FA CONFIGURATION
   # Updates MFA validation stage to force users to configure TOTP
   - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
     identifiers:

@@ -36,15 +36,64 @@ fi
 
 CLIENT_NAME="$1"
 
-# Check if secrets file exists
-SECRETS_FILE="$PROJECT_ROOT/secrets/clients/${CLIENT_NAME}.sops.yaml"
-if [ ! -f "$SECRETS_FILE" ]; then
-    echo -e "${RED}Error: Secrets file not found: $SECRETS_FILE${NC}"
+# Check if SSH key exists, generate if missing
+SSH_KEY_FILE="$PROJECT_ROOT/keys/ssh/${CLIENT_NAME}"
+if [ ! -f "$SSH_KEY_FILE" ]; then
+    echo -e "${YELLOW}SSH key not found for client: $CLIENT_NAME${NC}"
+    echo "Generating SSH key pair automatically..."
     echo ""
-    echo "Create a secrets file first:"
-    echo "  cp secrets/clients/test.sops.yaml secrets/clients/${CLIENT_NAME}.sops.yaml"
-    echo "  sops secrets/clients/${CLIENT_NAME}.sops.yaml"
-    exit 1
+
+    # Generate SSH key
+    "$SCRIPT_DIR/generate-client-keys.sh" "$CLIENT_NAME"
+
+    echo ""
+    echo -e "${GREEN}✓ SSH key generated${NC}"
+    echo ""
+fi
+
+# Check if secrets file exists, create from template if missing
+SECRETS_FILE="$PROJECT_ROOT/secrets/clients/${CLIENT_NAME}.sops.yaml"
+TEMPLATE_FILE="$PROJECT_ROOT/secrets/clients/template.sops.yaml"
+
+if [ ! -f "$SECRETS_FILE" ]; then
+    echo -e "${YELLOW}Secrets file not found for client: $CLIENT_NAME${NC}"
+    echo "Creating from template and opening for editing..."
+    echo ""
+
+    # Check if template exists
+    if [ ! -f "$TEMPLATE_FILE" ]; then
+        echo -e "${RED}Error: Template file not found: $TEMPLATE_FILE${NC}"
+        exit 1
+    fi
+
+    # Copy template
+    cp "$TEMPLATE_FILE" "$SECRETS_FILE"
+    echo -e "${GREEN}✓ Copied template to $SECRETS_FILE${NC}"
+    echo ""
+
+    # Open in SOPS for editing
+    echo -e "${BLUE}Opening secrets file in SOPS for editing...${NC}"
+    echo ""
+    echo "Please update the following fields:"
+    echo "  - client_name: $CLIENT_NAME"
+    echo "  - client_domain: ${CLIENT_NAME}.vrije.cloud"
+    echo "  - authentik_domain: auth.${CLIENT_NAME}.vrije.cloud"
+    echo "  - nextcloud_domain: nextcloud.${CLIENT_NAME}.vrije.cloud"
+    echo "  - REGENERATE all passwords and tokens!"
+    echo ""
+    echo "Press Enter to open editor..."
+    read -r
+
+    # Open in SOPS
+    if [ -z "${SOPS_AGE_KEY_FILE:-}" ]; then
+        export SOPS_AGE_KEY_FILE="$PROJECT_ROOT/keys/age-key.txt"
+    fi
+
+    sops "$SECRETS_FILE"
+
+    echo ""
+    echo -e "${GREEN}✓ Secrets file configured${NC}"
+    echo ""
 fi
 
 # Check required environment variables

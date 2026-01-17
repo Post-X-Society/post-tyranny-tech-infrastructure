@@ -22,22 +22,31 @@ export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
 ./scripts/deploy-client.sh <client_name>
 ```
 
-**What it does**:
-1. Provisions VPS server (if not exists)
-2. Sets up base system (Docker, Traefik)
-3. Deploys Authentik + Nextcloud
-4. Configures SSO integration automatically
+**What it does** (automatically):
+1. **Generates SSH key** (if missing) - Unique per-client key pair
+2. **Creates secrets file** (if missing) - From template, opens in editor
+3. Provisions VPS server (if not exists)
+4. Sets up base system (Docker, Traefik)
+5. Deploys Authentik + Nextcloud
+6. Configures SSO integration automatically
 
 **Time**: ~10-15 minutes
 
 **Example**:
 ```bash
-./scripts/deploy-client.sh test
+# Just run the script - it handles everything!
+./scripts/deploy-client.sh newclient
+
+# Script will:
+# 1. Generate keys/ssh/newclient + keys/ssh/newclient.pub
+# 2. Copy secrets/clients/template.sops.yaml → secrets/clients/newclient.sops.yaml
+# 3. Open SOPS editor for you to customize secrets
+# 4. Continue with deployment
 ```
 
 **Requirements**:
-- Secrets file must exist: `secrets/clients/<client_name>.sops.yaml`
 - Client must be defined in `tofu/terraform.tfvars`
+- Environment variables: `HCLOUD_TOKEN`, `SOPS_AGE_KEY_FILE` (optional)
 
 ---
 
@@ -98,20 +107,26 @@ export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
 
 ## Workflow Examples
 
-### Deploy a New Client
+### Deploy a New Client (Fully Automated)
 
 ```bash
-# 1. Create secrets file
-cp secrets/clients/test.sops.yaml secrets/clients/newclient.sops.yaml
-sops secrets/clients/newclient.sops.yaml
-# Edit: client_name, domains, regenerate passwords
-
-# 2. Add to terraform.tfvars
+# 1. Add to terraform.tfvars
 vim tofu/terraform.tfvars
-# Add client definition
+# Add:
+#   newclient = {
+#     server_type = "cx22"
+#     location    = "fsn1"
+#     subdomain   = "newclient"
+#     apps        = ["authentik", "nextcloud"]
+#   }
 
-# 3. Deploy
+# 2. Deploy (script handles SSH key + secrets automatically)
 ./scripts/deploy-client.sh newclient
+
+# That's it! Script will:
+# - Generate SSH key if missing
+# - Create secrets file from template if missing (opens editor)
+# - Deploy everything
 ```
 
 ### Test Changes (Rebuild)

@@ -42,17 +42,29 @@ infrastructure/
 export HCLOUD_TOKEN="your-hetzner-api-token"
 export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
 
-# 2. Deploy client (fully automated, ~10-15 minutes)
-./scripts/deploy-client.sh <client_name>
+# 2. Add client to terraform.tfvars
+# clients = {
+#   newclient = {
+#     server_type = "cx22"
+#     location    = "fsn1"
+#     subdomain   = "newclient"
+#     apps        = ["authentik", "nextcloud"]
+#   }
+# }
+
+# 3. Deploy client (fully automated, ~10-15 minutes)
+./scripts/deploy-client.sh newclient
 ```
 
-This automatically:
-- ✅ Provisions VPS on Hetzner Cloud
-- ✅ Deploys Authentik (SSO/identity provider)
-- ✅ Deploys Nextcloud (file storage)
-- ✅ Configures OAuth2/OIDC integration
-- ✅ Sets up SSL certificates
-- ✅ Creates admin accounts
+The script will automatically:
+- ✅ Generate unique SSH key pair (if missing)
+- ✅ Create secrets file from template (if missing, opens in editor)
+- ✅ Provision VPS on Hetzner Cloud
+- ✅ Deploy Authentik (SSO/identity provider)
+- ✅ Deploy Nextcloud (file storage)
+- ✅ Configure OAuth2/OIDC integration
+- ✅ Set up SSL certificates
+- ✅ Create admin accounts
 
 **Result**: Fully functional system, ready to use immediately!
 

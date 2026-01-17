@@ -1,0 +1,74 @@
+---
+# Mount Hetzner Volume for Nextcloud Data Storage
+#
+# This task file handles mounting the Hetzner Volume that stores Nextcloud user data.
+# The volume is created and attached by OpenTofu, we just mount it here.
+
+- name: Wait for volume device to appear
+  wait_for:
+    path: /dev/disk/by-id/
+    timeout: 30
+  register: disk_ready
+
+- name: Find Nextcloud volume device
+  shell: |
+    ls -1 /dev/disk/by-id/scsi-0HC_Volume_* 2>/dev/null | grep -i "nextcloud-data-{{ client_name }}" | head -1
+  register: volume_device_result
+  changed_when: false
+  failed_when: volume_device_result.rc != 0
+
+- name: Set volume device fact
+  set_fact:
+    volume_device: "{{ volume_device_result.stdout }}"
+
+- name: Display found volume device
+  debug:
+    msg: "Found Nextcloud volume at: {{ volume_device }}"
+
+- name: Check if volume is already formatted
+  shell: |
+    blkid {{ volume_device }} | grep -q 'TYPE="ext4"'
+  register: volume_formatted
+  changed_when: false
+  failed_when: false
+
+- name: Format volume as ext4 if not formatted
+  filesystem:
+    fstype: ext4
+    dev: "{{ volume_device }}"
+  when: volume_formatted.rc != 0
+
+- name: Create mount point directory
+  file:
+    path: /mnt/nextcloud-data
+    state: directory
+    mode: '0755'
+
+- name: Mount Nextcloud data volume
+  mount:
+    path: /mnt/nextcloud-data
+    src: "{{ volume_device }}"
+    fstype: ext4
+    state: mounted
+    opts: defaults,discard
+  register: mount_result
+
+- name: Ensure mount persists across reboots
+  mount:
+    path: /mnt/nextcloud-data
+    src: "{{ volume_device }}"
+    fstype: ext4
+    state: present
+    opts: defaults,discard
+
+- name: Create Nextcloud data directory on volume
+  file:
+    path: /mnt/nextcloud-data/data
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0750'
+
+- name: Display mount success
+  debug:
+    msg: "Nextcloud volume successfully mounted at /mnt/nextcloud-data"

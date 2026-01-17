@@ -1,6 +1,12 @@
 ---
 # Main tasks for Nextcloud deployment
 
+- name: Include volume mounting tasks
+  include_tasks: mount-volume.yml
+  tags:
+    - nextcloud
+    - volume
+
 - name: Include Docker deployment tasks
   include_tasks: docker.yml
   tags:

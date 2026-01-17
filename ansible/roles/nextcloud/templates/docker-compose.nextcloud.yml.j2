@@ -35,7 +35,8 @@ services:
       - nextcloud-db
       - nextcloud-redis
     volumes:
-      - nextcloud-data:/var/www/html
+      - nextcloud-app:/var/www/html
+      - /mnt/nextcloud-data/data:/var/www/html/data  # User data on Hetzner Volume
     entrypoint: /cron.sh
     networks:
       - nextcloud-internal
@@ -49,7 +50,8 @@ services:
       - nextcloud-db
       - nextcloud-redis
     volumes:
-      - nextcloud-data:/var/www/html
+      - nextcloud-app:/var/www/html
+      - /mnt/nextcloud-data/data:/var/www/html/data  # User data on Hetzner Volume
     environment:
       # Database configuration
       POSTGRES_HOST: {{ nextcloud_db_host }}
@@ -158,5 +160,6 @@ volumes:
     name: nextcloud-db-data
   nextcloud-redis-data:
     name: nextcloud-redis-data
-  nextcloud-data:
-    name: nextcloud-data
+  nextcloud-app:
+    name: nextcloud-app
+    # Note: nextcloud-data volume removed - user data now stored on Hetzner Volume at /mnt/nextcloud-data

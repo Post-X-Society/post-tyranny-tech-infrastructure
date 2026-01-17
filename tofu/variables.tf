@@ -26,10 +26,11 @@ variable "base_domain" {
 variable "clients" {
   description = "Map of client configurations"
   type = map(object({
-    server_type = string       # e.g., "cx22" (2 vCPU, 4 GB RAM)
-    location    = string       # e.g., "fsn1" (Falkenstein), "nbg1" (Nuremberg), "hel1" (Helsinki)
-    subdomain   = string       # e.g., "alpha" for alpha.platform.nl
-    apps        = list(string) # e.g., ["zitadel", "nextcloud"]
+    server_type            = string       # e.g., "cx22" (2 vCPU, 4 GB RAM)
+    location               = string       # e.g., "fsn1" (Falkenstein), "nbg1" (Nuremberg), "hel1" (Helsinki)
+    subdomain              = string       # e.g., "alpha" for alpha.platform.nl
+    apps                   = list(string) # e.g., ["zitadel", "nextcloud"]
+    nextcloud_volume_size  = number       # Size in GB for Nextcloud data volume (min 10, max 10000)
   }))
   default = {}
 }

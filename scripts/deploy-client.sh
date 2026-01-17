@@ -211,6 +211,16 @@ echo ""
 echo -e "${GREEN}✓ Registry updated${NC}"
 echo ""
 
+# Collect deployed versions
+echo -e "${YELLOW}Collecting deployed versions...${NC}"
+
+"$SCRIPT_DIR/collect-client-versions.sh" "$CLIENT_NAME" 2>/dev/null || {
+    echo -e "${YELLOW}⚠ Could not collect versions automatically${NC}"
+    echo "Run manually later: ./scripts/collect-client-versions.sh $CLIENT_NAME"
+}
+
+echo ""
+
 # Calculate duration
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))

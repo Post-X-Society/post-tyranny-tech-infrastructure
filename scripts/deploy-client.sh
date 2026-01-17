@@ -130,6 +130,28 @@ if ! grep -q "\"$CLIENT_NAME\"" terraform.tfvars 2>/dev/null; then
     fi
 fi
 
+# Check if client exists in terraform.tfvars
+TFVARS_FILE="$PROJECT_ROOT/tofu/terraform.tfvars"
+if ! grep -q "^[[:space:]]*${CLIENT_NAME}[[:space:]]*=" "$TFVARS_FILE"; then
+    echo -e "${YELLOW}⚠ Client '${CLIENT_NAME}' not found in terraform.tfvars${NC}"
+    echo ""
+    echo "The client must be added to OpenTofu configuration before deployment."
+    echo ""
+    read -p "Would you like to add it now? (yes/no): " add_confirm
+
+    if [ "$add_confirm" = "yes" ]; then
+        echo ""
+        "$SCRIPT_DIR/add-client-to-terraform.sh" "$CLIENT_NAME"
+        echo ""
+    else
+        echo -e "${RED}Error: Cannot deploy without OpenTofu configuration${NC}"
+        echo ""
+        echo "Add the client manually to tofu/terraform.tfvars, or run:"
+        echo "  ./scripts/add-client-to-terraform.sh $CLIENT_NAME"
+        exit 1
+    fi
+fi
+
 # Start timer
 START_TIME=$(date +%s)
 

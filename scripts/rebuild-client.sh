@@ -109,6 +109,18 @@ if [ -z "${SOPS_AGE_KEY_FILE:-}" ]; then
     export SOPS_AGE_KEY_FILE="$PROJECT_ROOT/keys/age-key.txt"
 fi
 
+# Check if client exists in terraform.tfvars
+TFVARS_FILE="$PROJECT_ROOT/tofu/terraform.tfvars"
+if ! grep -q "^[[:space:]]*${CLIENT_NAME}[[:space:]]*=" "$TFVARS_FILE"; then
+    echo -e "${RED}Error: Client '${CLIENT_NAME}' not found in terraform.tfvars${NC}"
+    echo ""
+    echo "Cannot rebuild a client that doesn't exist in OpenTofu configuration."
+    echo ""
+    echo "To deploy a new client, use:"
+    echo "  ./scripts/deploy-client.sh $CLIENT_NAME"
+    exit 1
+fi
+
 # Start timer
 START_TIME=$(date +%s)
 

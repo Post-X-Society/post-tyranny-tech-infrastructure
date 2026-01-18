@@ -117,11 +117,18 @@ services:
     image: collabora/code:latest
     container_name: collabora
     restart: unless-stopped
+    # Required capabilities for optimal performance (bind-mount instead of copy)
+    cap_add:
+      - MKNOD
+      - SYS_CHROOT
     environment:
       - domain={{ nextcloud_domain | regex_replace('\.', '\\.') }}
       - username={{ collabora_admin_user }}
       - password={{ client_secrets.collabora_admin_password }}
-      - extra_params=--o:ssl.enable=false --o:ssl.termination=true
+      # Performance tuning based on available CPU cores
+      # num_prespawn_children: Number of child processes to keep started (default: 1)
+      # per_document.max_concurrency: Max threads per document (should be <= CPU cores)
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=true --o:num_prespawn_children=1 --o:per_document.max_concurrency=2
       - MEMPROPORTION=60.0
       - MAX_DOCUMENTS=10
       - MAX_CONNECTIONS=20

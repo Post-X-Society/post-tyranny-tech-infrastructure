@@ -175,7 +175,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Step 1: Provision infrastructure
-echo -e "${YELLOW}[1/4] Provisioning infrastructure with OpenTofu...${NC}"
+echo -e "${YELLOW}[1/5] Provisioning infrastructure with OpenTofu...${NC}"
 
 cd "$PROJECT_ROOT/tofu"
 
@@ -199,7 +199,7 @@ fi
 echo ""
 
 # Step 2: Setup base system
-echo -e "${YELLOW}[2/4] Setting up base system (Docker, Traefik)...${NC}"
+echo -e "${YELLOW}[2/5] Setting up base system (Docker, Traefik)...${NC}"
 
 cd "$PROJECT_ROOT/ansible"
 
@@ -210,7 +210,7 @@ echo -e "${GREEN}✓ Base system configured${NC}"
 echo ""
 
 # Step 3: Deploy applications
-echo -e "${YELLOW}[3/4] Deploying applications (Authentik, Nextcloud, SSO)...${NC}"
+echo -e "${YELLOW}[3/5] Deploying applications (Authentik, Nextcloud, SSO)...${NC}"
 
 ~/.local/bin/ansible-playbook -i hcloud.yml playbooks/deploy.yml --limit "$CLIENT_NAME"
 
@@ -219,7 +219,7 @@ echo -e "${GREEN}✓ Applications deployed${NC}"
 echo ""
 
 # Step 4: Update client registry
-echo -e "${YELLOW}[4/4] Updating client registry...${NC}"
+echo -e "${YELLOW}[4/5] Updating client registry...${NC}"
 
 cd "$PROJECT_ROOT/tofu"
 
@@ -254,6 +254,19 @@ echo -e "${YELLOW}Collecting deployed versions...${NC}"
     echo -e "${YELLOW}⚠ Could not collect versions automatically${NC}"
     echo "Run manually later: ./scripts/collect-client-versions.sh $CLIENT_NAME"
 }
+
+echo ""
+
+# Add to monitoring
+echo -e "${YELLOW}[5/5] Adding client to monitoring...${NC}"
+echo ""
+
+if [ -f "$SCRIPT_DIR/add-client-to-monitoring.sh" ]; then
+    "$SCRIPT_DIR/add-client-to-monitoring.sh" "$CLIENT_NAME"
+else
+    echo -e "${YELLOW}⚠ Monitoring script not found${NC}"
+    echo "Manually add monitors at: https://status.vrije.cloud"
+fi
 
 echo ""
 

@@ -1,7 +1,8 @@
 # Uptime Monitoring with Uptime Kuma
 
 **Status**: ✅ Deployed
-**URL**: http://94.130.231.155:3001 (will be https://status.postxsociety.cloud after DNS setup)
+**URL**: https://status.vrije.cloud (DNS configured)
+**Fallback**: https://status.vrije.cloud
 **Server**: External monitoring server (94.130.231.155)
 
 ## Overview
@@ -70,7 +71,7 @@ networks:
 
 Open in browser:
 ```
-http://94.130.231.155:3001
+https://status.vrije.cloud
 ```
 
 ### 2. Create Admin Account
@@ -233,7 +234,7 @@ Uptime Kuma supports public status pages. To enable:
    - **Theme**: Choose theme
 4. Add monitors to display
 5. Click **Save**
-6. Access at: `http://94.130.231.155:3001/status/ptt-status`
+6. Access at: `https://status.vrije.cloud/status/ptt-status`
 
 ## DNS Setup (Optional)
 
@@ -246,7 +247,7 @@ Add A record:
 status.vrije.cloud → 94.130.231.155
 ```
 
-Then access at: `https://status.postxsociety.cloud` (via nginx-proxy SSL)
+Then access at: `https://status.vrije.cloud` (via nginx-proxy SSL)
 
 ### Option 2: Use postxsociety.cloud
 

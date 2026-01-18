@@ -78,8 +78,21 @@ echo ""
 echo -e "${YELLOW}Starting destruction of client: $CLIENT_NAME${NC}"
 echo ""
 
+# Step 0: Remove from monitoring
+echo -e "${YELLOW}[0/7] Removing client from monitoring...${NC}"
+echo ""
+
+if [ -f "$SCRIPT_DIR/remove-client-from-monitoring.sh" ]; then
+    "$SCRIPT_DIR/remove-client-from-monitoring.sh" "$CLIENT_NAME"
+else
+    echo -e "${YELLOW}⚠ Monitoring script not found${NC}"
+    echo "Manually remove monitors at: https://status.vrije.cloud"
+fi
+
+echo ""
+
 # Step 1: Delete Mailgun SMTP credentials
-echo -e "${YELLOW}[1/3] Deleting Mailgun SMTP credentials...${NC}"
+echo -e "${YELLOW}[1/7] Deleting Mailgun SMTP credentials...${NC}"
 
 cd "$PROJECT_ROOT/ansible"
 

@@ -53,3 +53,17 @@ resource "hcloud_zone_rrset" "client_aaaa" {
     }
   ]
 }
+
+# Static A record for monitoring server (status.vrije.cloud -> external monitoring server)
+resource "hcloud_zone_rrset" "monitoring" {
+  zone   = data.hcloud_zone.main.name
+  name   = "status"
+  type   = "A"
+  ttl    = 300
+  records = [
+    {
+      value   = "94.130.231.155"
+      comment = "Uptime Kuma monitoring server"
+    }
+  ]
+}

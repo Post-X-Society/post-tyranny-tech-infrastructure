@@ -12,10 +12,10 @@
 
 - name: Find Nextcloud volume device
   shell: |
-    ls -1 /dev/disk/by-id/scsi-0HC_Volume_* 2>/dev/null | grep -i "nextcloud-data-{{ client_name }}" | head -1
+    ls -1 /dev/disk/by-id/scsi-0HC_Volume_* 2>/dev/null | head -1
   register: volume_device_result
   changed_when: false
-  failed_when: volume_device_result.rc != 0
+  failed_when: false
 
 - name: Set volume device fact
   set_fact:

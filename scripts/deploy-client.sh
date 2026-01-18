@@ -66,33 +66,47 @@ if [ ! -f "$SECRETS_FILE" ]; then
         exit 1
     fi
 
-    # Copy template
-    cp "$TEMPLATE_FILE" "$SECRETS_FILE"
-    echo -e "${GREEN}✓ Copied template to $SECRETS_FILE${NC}"
-    echo ""
-
-    # Open in SOPS for editing
-    echo -e "${BLUE}Opening secrets file in SOPS for editing...${NC}"
-    echo ""
-    echo "Please update the following fields:"
-    echo "  - client_name: $CLIENT_NAME"
-    echo "  - client_domain: ${CLIENT_NAME}.vrije.cloud"
-    echo "  - authentik_domain: auth.${CLIENT_NAME}.vrije.cloud"
-    echo "  - nextcloud_domain: nextcloud.${CLIENT_NAME}.vrije.cloud"
-    echo "  - REGENERATE all passwords and tokens!"
-    echo ""
-    echo "Press Enter to open editor..."
-    read -r
-
-    # Open in SOPS
+    # Copy template and decrypt to temporary file
     if [ -z "${SOPS_AGE_KEY_FILE:-}" ]; then
         export SOPS_AGE_KEY_FILE="$PROJECT_ROOT/keys/age-key.txt"
     fi
 
-    sops "$SECRETS_FILE"
+    # Decrypt template to temp file
+    TEMP_PLAIN=$(mktemp)
+    sops -d "$TEMPLATE_FILE" > "$TEMP_PLAIN"
+
+    # Replace client name placeholders
+    sed -i '' "s/test/${CLIENT_NAME}/g" "$TEMP_PLAIN"
+
+    # Create unencrypted file in correct location (matching .sops.yaml regex)
+    # This is necessary because SOPS needs the file path to match creation rules
+    TEMP_SOPS="${SECRETS_FILE%.sops.yaml}-unenc.sops.yaml"
+    cat "$TEMP_PLAIN" > "$TEMP_SOPS"
+
+    # Encrypt in-place (SOPS finds creation rules because path matches regex)
+    sops --encrypt --in-place "$TEMP_SOPS"
+
+    # Rename to final name
+    mv "$TEMP_SOPS" "$SECRETS_FILE"
+
+    # Cleanup
+    rm "$TEMP_PLAIN"
+
+    echo -e "${GREEN}✓ Created secrets file with client-specific domains${NC}"
+    echo ""
+
+    # Automatically generate unique passwords
+    echo -e "${BLUE}Generating unique passwords for ${CLIENT_NAME}...${NC}"
+    echo ""
+
+    # Call the password generator script
+    "$SCRIPT_DIR/generate-passwords.sh" "$CLIENT_NAME"
 
     echo ""
-    echo -e "${GREEN}✓ Secrets file configured${NC}"
+    echo -e "${GREEN}✓ Secrets file configured with unique passwords${NC}"
+    echo ""
+    echo -e "${YELLOW}To view credentials:${NC}"
+    echo -e "  ${BLUE}./scripts/get-passwords.sh ${CLIENT_NAME}${NC}"
     echo ""
 fi
 

@@ -61,3 +61,7 @@ temp/
 scripts/*-test*.py
 scripts/test-*.py
 **/test-oidc-provider.py
+
+# Documentation/reports (except README.md)
+*.md
+!README.md

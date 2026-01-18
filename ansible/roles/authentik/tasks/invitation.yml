@@ -15,12 +15,15 @@
   until: api_result.status == 200
   retries: 12
   delay: 5
+  ignore_errors: yes
+  failed_when: false
 
 - name: Create blueprints directory on server
   file:
     path: /opt/config/authentik/blueprints
     state: directory
     mode: '0755'
+  when: api_result.status is defined and api_result.status == 200
 
 - name: Copy public enrollment flow blueprint to server
   copy:
@@ -28,14 +31,17 @@
     dest: /opt/config/authentik/blueprints/enrollment-flow.yaml
     mode: '0644'
   register: enrollment_blueprint_copied
+  when: api_result.status is defined and api_result.status == 200
 
 - name: Copy enrollment blueprint into authentik-worker container
   shell: |
     docker cp /opt/config/authentik/blueprints/enrollment-flow.yaml authentik-worker:/blueprints/enrollment-flow.yaml
+  when: api_result.status is defined and api_result.status == 200
 
 - name: Copy enrollment blueprint into authentik-server container
   shell: |
     docker cp /opt/config/authentik/blueprints/enrollment-flow.yaml authentik-server:/blueprints/enrollment-flow.yaml
+  when: api_result.status is defined and api_result.status == 200
 
 - name: Wait for enrollment blueprint to be discovered and applied
   shell: |
@@ -59,6 +65,7 @@
     echo "Blueprint deployment in progress (may take 1-2 minutes)"
   register: enrollment_blueprint_result
   changed_when: false
+  when: api_result.status is defined and api_result.status == 200
 
 - name: Verify enrollment flow was created
   shell: |
@@ -68,6 +75,7 @@
   register: enrollment_flow_check
   changed_when: false
   failed_when: false
+  when: api_result.status is defined and api_result.status == 200
 
 - name: Display public enrollment flow configuration status
   debug:
@@ -80,7 +88,7 @@
       Blueprint File: /blueprints/enrollment-flow.yaml
 
       ✓ Blueprint Deployed: {{ enrollment_blueprint_copied.changed | default(false) }}
-      ✓ Blueprint Applied: {{ 'In Progress' if enrollment_blueprint_result.rc != 0 else 'Complete' }}
+      ✓ Blueprint Applied: {{ 'In Progress' if (enrollment_blueprint_result is defined and enrollment_blueprint_result.rc is defined and enrollment_blueprint_result.rc != 0) else 'Complete' }}
 
       Verification: {{ enrollment_flow_check.stdout | default('{}') }}
 
@@ -100,3 +108,4 @@
       - Check Admin > System > Brands > Flow enrollment
       - Test enrollment at: https://{{ authentik_domain }}/if/flow/default-enrollment-flow/
       ========================================
+  when: api_result.status is defined and api_result.status == 200

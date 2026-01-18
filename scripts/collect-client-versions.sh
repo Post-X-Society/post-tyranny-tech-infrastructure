@@ -40,12 +40,10 @@ if ! command -v yq &> /dev/null; then
     exit 1
 fi
 
-# Check required environment variables
+# Load Hetzner API token from SOPS if not already set
 if [ -z "${HCLOUD_TOKEN:-}" ]; then
-    echo -e "${RED}Error: HCLOUD_TOKEN environment variable not set${NC}"
-    echo "Export your Hetzner Cloud API token:"
-    echo "  export HCLOUD_TOKEN='your-token-here'"
-    exit 1
+    # shellcheck source=scripts/load-secrets-env.sh
+    source "$SCRIPT_DIR/load-secrets-env.sh" > /dev/null 2>&1
 fi
 
 # Check if registry exists

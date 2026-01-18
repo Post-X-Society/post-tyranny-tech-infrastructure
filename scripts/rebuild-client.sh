@@ -66,29 +66,57 @@ if [ ! -f "$SECRETS_FILE" ]; then
         exit 1
     fi
 
-    # Copy template
-    cp "$TEMPLATE_FILE" "$SECRETS_FILE"
-    echo -e "${GREEN}✓ Copied template to $SECRETS_FILE${NC}"
+    # Copy template and decrypt to temporary file
+    if [ -z "${SOPS_AGE_KEY_FILE:-}" ]; then
+        export SOPS_AGE_KEY_FILE="$PROJECT_ROOT/keys/age-key.txt"
+    fi
+
+    # Decrypt template to temp file
+    TEMP_PLAIN=$(mktemp)
+    sops -d "$TEMPLATE_FILE" > "$TEMP_PLAIN"
+
+    # Replace client name placeholders
+    sed -i '' "s/test/${CLIENT_NAME}/g" "$TEMP_PLAIN"
+
+    # Create unencrypted file in correct location (matching .sops.yaml regex)
+    # This is necessary because SOPS needs the file path to match creation rules
+    TEMP_SOPS="${SECRETS_FILE%.sops.yaml}-unenc.sops.yaml"
+    cat "$TEMP_PLAIN" > "$TEMP_SOPS"
+
+    # Encrypt in-place (SOPS finds creation rules because path matches regex)
+    sops --encrypt --in-place "$TEMP_SOPS"
+
+    # Rename to final name
+    mv "$TEMP_SOPS" "$SECRETS_FILE"
+
+    # Cleanup
+    rm "$TEMP_PLAIN"
+
+    echo -e "${GREEN}✓ Created secrets file with client-specific domains${NC}"
     echo ""
 
-    # Open in SOPS for editing
-    echo -e "${BLUE}Opening secrets file in SOPS for editing...${NC}"
+    # Open in SOPS for editing passwords
+    echo -e "${BLUE}Opening secrets file in SOPS for password generation...${NC}"
     echo ""
-    echo "Please update the following fields:"
-    echo "  - client_name: $CLIENT_NAME"
-    echo "  - client_domain: ${CLIENT_NAME}.vrije.cloud"
-    echo "  - authentik_domain: auth.${CLIENT_NAME}.vrije.cloud"
-    echo "  - nextcloud_domain: nextcloud.${CLIENT_NAME}.vrije.cloud"
-    echo "  - REGENERATE all passwords and tokens!"
+    echo -e "${YELLOW}IMPORTANT: Regenerate ALL passwords and tokens!${NC}"
+    echo ""
+    echo "Domains have been automatically configured:"
+    echo "  ✓ client_name: $CLIENT_NAME"
+    echo "  ✓ client_domain: ${CLIENT_NAME}.vrije.cloud"
+    echo "  ✓ authentik_domain: auth.${CLIENT_NAME}.vrije.cloud"
+    echo "  ✓ nextcloud_domain: nextcloud.${CLIENT_NAME}.vrije.cloud"
+    echo ""
+    echo "You MUST regenerate:"
+    echo "  - All database passwords"
+    echo "  - authentik_secret_key"
+    echo "  - authentik_bootstrap_password"
+    echo "  - authentik_bootstrap_token"
+    echo "  - All other passwords"
     echo ""
     echo "Press Enter to open editor..."
     read -r
 
     # Open in SOPS
-    if [ -z "${SOPS_AGE_KEY_FILE:-}" ]; then
-        export SOPS_AGE_KEY_FILE="$PROJECT_ROOT/keys/age-key.txt"
-    fi
-
     sops "$SECRETS_FILE"
 
     echo ""
@@ -96,12 +124,12 @@ if [ ! -f "$SECRETS_FILE" ]; then
     echo ""
 fi
 
-# Check required environment variables
+# Load Hetzner API token from SOPS if not already set
 if [ -z "${HCLOUD_TOKEN:-}" ]; then
-    echo -e "${RED}Error: HCLOUD_TOKEN environment variable not set${NC}"
-    echo "Export your Hetzner Cloud API token:"
-    echo "  export HCLOUD_TOKEN='your-token-here'"
-    exit 1
+    echo -e "${BLUE}Loading Hetzner API token from SOPS...${NC}"
+    # shellcheck source=scripts/load-secrets-env.sh
+    source "$SCRIPT_DIR/load-secrets-env.sh"
+    echo ""
 fi
 
 if [ -z "${SOPS_AGE_KEY_FILE:-}" ]; then

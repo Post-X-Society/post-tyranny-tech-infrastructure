@@ -56,12 +56,12 @@ if [ "$NEW_SIZE" -gt 10000 ]; then
     exit 1
 fi
 
-# Check required environment variables
+# Load Hetzner API token from SOPS if not already set
 if [ -z "${HCLOUD_TOKEN:-}" ]; then
-    echo -e "${RED}Error: HCLOUD_TOKEN environment variable not set${NC}"
-    echo "Export your Hetzner Cloud API token:"
-    echo "  export HCLOUD_TOKEN='your-token-here'"
-    exit 1
+    echo -e "${BLUE}Loading Hetzner API token from SOPS...${NC}"
+    # shellcheck source=scripts/load-secrets-env.sh
+    source "$SCRIPT_DIR/load-secrets-env.sh"
+    echo ""
 fi
 
 echo -e "${BLUE}========================================${NC}"

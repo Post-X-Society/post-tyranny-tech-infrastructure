@@ -1,12 +1,20 @@
 # Security Note: Hetzner API Token Placement
 
-**Date**: 2026-01-17
+**Date**: 2026-01-17 (Updated: 2026-01-18)
 **Severity**: INFORMATIONAL
-**Status**: SAFE (but can be improved)
+**Status**: ✅ IMPROVED - Now using SOPS encryption
 
-## Current Situation
+## ✅ RESOLVED (2026-01-18)
 
-The Hetzner Cloud API token is currently stored in:
+The Hetzner Cloud API token has been moved to SOPS-encrypted storage:
+- ✅ Token now stored in `secrets/shared.sops.yaml` (encrypted with Age)
+- ✅ Automatically loaded by all scripts via `scripts/load-secrets-env.sh`
+- ✅ Removed from `tofu/terraform.tfvars`
+- ✅ All management scripts updated
+
+## Previous Situation (Before 2026-01-18)
+
+The Hetzner Cloud API token was previously stored in:
 - `tofu/terraform.tfvars` (gitignored, NOT committed)
 
 ## Assessment
@@ -71,11 +79,28 @@ export TF_VAR_hcloud_token=$(sops -d secrets/shared.sops.yaml | yq .hcloud_token
 tofu apply
 ```
 
-## Recommendation
+## How It Works Now
 
-**For current usage**: ✅ No action required - current setup is safe
+All management scripts automatically load the token from SOPS:
 
-**For enhanced security** (optional): Consider moving to Option 2 when time permits
+```bash
+# Scripts automatically load token from SOPS
+./scripts/deploy-client.sh newclient
+./scripts/rebuild-client.sh newclient
+./scripts/destroy-client.sh newclient
+
+# Manual loading (if needed)
+source scripts/load-secrets-env.sh
+# Exports: HCLOUD_TOKEN, TF_VAR_hcloud_token, TF_VAR_hetznerdns_token
+```
+
+## Benefits Achieved
+
+✅ **Token encrypted at rest** with Age encryption
+✅ **Can be safely backed up** to cloud storage
+✅ **Consistent with other secrets** management
+✅ **Better security posture** overall
+✅ **Automatic loading** - no manual token management needed
 
 ## Verification
 

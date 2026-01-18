@@ -38,8 +38,7 @@ infrastructure/
 **The fastest way to deploy a client:**
 
 ```bash
-# 1. Set environment variables
-export HCLOUD_TOKEN="your-hetzner-api-token"
+# 1. Ensure SOPS Age key is available (if not set)
 export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
 
 # 2. Add client to terraform.tfvars
@@ -53,8 +52,11 @@ export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
 # }
 
 # 3. Deploy client (fully automated, ~10-15 minutes)
+# The script automatically loads the Hetzner API token from SOPS
 ./scripts/deploy-client.sh newclient
 ```
+
+**Note**: The Hetzner API token is now stored encrypted in `secrets/shared.sops.yaml` and loaded automatically by all scripts. No need to manually set `HCLOUD_TOKEN`.
 
 The script will automatically:
 - ✅ Generate unique SSH key pair (if missing)

@@ -4,12 +4,13 @@ Automated scripts for managing client infrastructure.
 
 ## Prerequisites
 
-Set required environment variables:
+Set SOPS Age key location (optional, scripts use default):
 
 ```bash
-export HCLOUD_TOKEN="your-hetzner-cloud-api-token"
 export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
 ```
+
+**Note**: The Hetzner API token is now automatically loaded from SOPS-encrypted `secrets/shared.sops.yaml`. No need to manually set `HCLOUD_TOKEN`.
 
 ## Scripts
 
@@ -46,7 +47,7 @@ export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
 
 **Requirements**:
 - Client must be defined in `tofu/terraform.tfvars`
-- Environment variables: `HCLOUD_TOKEN`, `SOPS_AGE_KEY_FILE` (optional)
+- SOPS Age key available at `keys/age-key.txt` (or set `SOPS_AGE_KEY_FILE`)
 
 ---
 
@@ -187,7 +188,6 @@ These scripts can be used in automation:
 
 ```bash
 # Non-interactive deployment
-export HCLOUD_TOKEN="..."
 export SOPS_AGE_KEY_FILE="..."
 
 ./scripts/deploy-client.sh production
@@ -203,9 +203,23 @@ For rebuild (skip confirmation):
 
 ### Script fails with "HCLOUD_TOKEN not set"
 
-```bash
-export HCLOUD_TOKEN="your-token-here"
-```
+The token should be automatically loaded from SOPS. If this fails:
+
+1. Ensure SOPS Age key is available:
+   ```bash
+   export SOPS_AGE_KEY_FILE="./keys/age-key.txt"
+   ls -la keys/age-key.txt
+   ```
+
+2. Verify token is in shared secrets:
+   ```bash
+   sops -d secrets/shared.sops.yaml | grep hcloud_token
+   ```
+
+3. Manually load secrets:
+   ```bash
+   source scripts/load-secrets-env.sh
+   ```
 
 ### Script fails with "Secrets file not found"
 

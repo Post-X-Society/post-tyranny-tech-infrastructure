@@ -28,7 +28,7 @@ SMTP Settings:
 
 Authentication:
   Username: server@postxsociety.org
-  Password: Mov!ePubl1cL0ndon@longW!7h
+  Password: <retrieve from password manager or monitoring server>
 
 From Email: server@postxsociety.org
 To Email: mail@postxsociety.org
@@ -37,6 +37,8 @@ Custom Subject (optional):
   [🔴 DOWN] {msg}
   [✅ UP] {msg}
 ```
+
+**Note:** SMTP password is stored on the monitoring server at `/opt/docker/diun/docker-compose.yml` if you need to retrieve it.
 
 ### 4. Test the Notification
 
